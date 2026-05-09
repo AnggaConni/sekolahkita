@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dashboard - SekolahAman Terpusat</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- PapaParse untuk membaca CSV Google Sheets -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .timeline-line::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 30px;
+            bottom: -10px;
+            width: 2px;
+            background-color: #e2e8f0;
+            z-index: 0;
+        }
+        .timeline-item:last-child .timeline-line::before { display: none; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-full md:w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 h-auto md:h-full z-30 relative shadow-sm">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-600 md:bg-white text-white md:text-slate-800">
+            <div class="flex items-center gap-3">
+                <i class="ph-fill ph-shield-check text-3xl text-white md:text-blue-600"></i>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight leading-none">SekolahAman</h1>
+                    <p class="text-[10px] font-bold md:text-slate-400 uppercase tracking-widest mt-0.5 opacity-80">Command Center</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 flex-1 overflow-y-auto hidden md:block">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Navigasi Utama</p>
+            <nav class="space-y-2">
+                <a href="#" class="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold transition-colors border border-blue-100">
+                    <i class="ph-bold ph-squares-four text-xl"></i> Ringkasan Global
+                </a>
+                <a href="tool.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-xl font-semibold transition-colors">
+                    <i class="ph-bold ph-app-window text-xl"></i> Buka Alat Inspeksi
+                </a>
+            </nav>
+
+            <div class="mt-8">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Filter Sekolah</p>
+                <select id="filter-sekolah" onchange="filterDataSekolah()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="ALL">Tampilkan Semua Sekolah</option>
+                    <!-- Opsi diisi otomatis -->
+                </select>
+            </div>
+            
+            <div class="mt-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Status Sinkronisasi</p>
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <p class="text-xs font-bold text-emerald-700" id="sync-status">Terhubung ke Database</p>
+                </div>
+                <button onclick="fetchData()" class="w-full bg-white border border-slate-200 text-slate-600 text-xs font-bold px-4 py-2 rounded-lg hover:bg-slate-100 transition shadow-sm flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Segarkan Data
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        <!-- Header Mobile (Filter) -->
+        <div class="md:hidden bg-white p-4 border-b border-slate-200 flex gap-2 z-20 shadow-sm">
+            <select id="filter-sekolah-mobile" onchange="document.getElementById('filter-sekolah').value = this.value; filterDataSekolah();" class="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="ALL">Semua Sekolah</option>
+            </select>
+            <button onclick="fetchData()" class="bg-blue-50 text-blue-600 px-4 rounded-lg font-bold"><i class="ph-bold ph-arrows-clockwise"></i></button>
+        </div>
+
+        <div id="loading-screen" class="absolute inset-0 bg-white/80 backdrop-blur z-50 flex flex-col justify-center items-center">
+            <i class="ph-bold ph-spinner-gap text-5xl text-blue-600 animate-spin mb-4"></i>
+            <h2 class="text-lg font-bold text-slate-800">Menarik Data dari Database...</h2>
+            <p class="text-xs text-slate-500 mt-1">Mengolah ratusan riwayat laporan ke dalam timeline.</p>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-32">
+            
+            <!-- GLOBAL METRICS -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Sekolah Terpantau</p>
+                    <h3 class="text-3xl font-black text-slate-800 mt-1" id="stat-sekolah">0</h3>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Total Objek Unik</p>
+                    <h3 class="text-3xl font-black text-slate-800 mt-1" id="stat-objek">0</h3>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col border-l-4 border-l-red-500">
+                    <p class="text-[10px] font-bold text-red-400 uppercase">Gedung Kritis</p>
+                    <h3 class="text-3xl font-black text-red-600 mt-1" id="stat-kritis">0</h3>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col border-l-4 border-l-blue-500">
+                    <p class="text-[10px] font-bold text-blue-400 uppercase">Total Log Laporan</p>
+                    <h3 class="text-3xl font-black text-blue-600 mt-1" id="stat-logs">0</h3>
+                </div>
+            </div>
+
+            <div class="flex flex-col lg:flex-row gap-8">
+                
+                <!-- KOLOM KIRI: DAFTAR OBJEK / PETA -->
+                <div class="flex-1 space-y-6">
+                    <!-- Peta Persebaran -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-map-trifold text-blue-600"></i> Peta Persebaran</h3>
+                        </div>
+                        <div id="global-map" class="w-full h-64 md:h-80 bg-slate-200 relative z-0"></div>
+                    </div>
+
+                    <!-- Daftar Objek yang Difilter -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-end">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-lg" id="list-title">Daftar Objek (Semua Sekolah)</h3>
+                                <p class="text-xs text-slate-500 mt-1">Pilih objek untuk melihat riwayat tren dan timeline-nya.</p>
+                            </div>
+                        </div>
+                        <div class="p-5 space-y-3" id="object-list-container">
+                            <!-- Diisi oleh JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KOLOM KANAN: TIMELINE TREN (Panel Interaktif) -->
+                <div class="w-full lg:w-[450px] shrink-0 hidden lg:block" id="timeline-panel">
+                    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 sticky top-4 overflow-hidden h-[calc(100vh-2rem)] flex flex-col">
+                        <div class="p-6 bg-slate-800 text-white relative">
+                            <i class="ph-fill ph-clock-counter-clockwise absolute -right-6 -bottom-6 text-9xl opacity-10"></i>
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/20 rounded text-[10px] font-bold uppercase tracking-wider mb-3 backdrop-blur" id="tl-kategori">Analisis Tren</div>
+                            <h2 class="text-2xl font-black leading-tight mb-1" id="tl-objek-nama">Pilih Objek</h2>
+                            <p class="text-xs text-slate-300" id="tl-sekolah-nama">Klik salah satu objek di daftar kiri untuk memuat timeline riwayat perubahannya.</p>
+                        </div>
+                        
+                        <!-- Area Grafik/Tren -->
+                        <div class="p-5 bg-slate-50 border-b border-slate-200 text-center" id="tl-trend-box">
+                            <p class="text-xs font-bold text-slate-500 uppercase">Status Tren Saat Ini</p>
+                            <h3 class="text-xl font-black text-slate-400 mt-1">Belum Ada Data</h3>
+                        </div>
+
+                        <!-- Area Daftar Riwayat Vertikal -->
+                        <div class="p-6 flex-1 overflow-y-auto bg-white" id="tl-history-list">
+                            <div class="text-center p-8 text-slate-400">
+                                <i class="ph-fill ph-hand-pointing text-4xl mb-3"></i>
+                                <p class="text-sm font-bold">Silakan pilih objek di sebelah kiri.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TIMELINE PANEL MOBILE (Modal) -->
+                <div id="modal-timeline-mobile" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex-col justify-end items-center p-0 backdrop-blur-sm transition-opacity lg:hidden">
+                    <div class="bg-white rounded-t-3xl w-full max-h-[85vh] flex flex-col shadow-2xl transform transition-transform h-full">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-800 text-white rounded-t-3xl sticky top-0 z-10">
+                            <div>
+                                <h3 class="font-bold text-lg leading-tight" id="tl-objek-nama-mobile">Nama Objek</h3>
+                                <p class="text-[10px] text-slate-300 uppercase tracking-widest mt-1" id="tl-sekolah-nama-mobile">Nama Sekolah</p>
+                            </div>
+                            <button onclick="closeTimelineMobile()" class="bg-white/20 p-2 rounded-full text-white hover:bg-white/30 transition"><i class="ph-bold ph-x text-lg"></i></button>
+                        </div>
+                        
+                        <div class="p-4 bg-slate-50 border-b border-slate-200 text-center" id="tl-trend-box-mobile">
+                            <!-- Trend Diisi JS -->
+                        </div>
+
+                        <div class="p-5 flex-1 overflow-y-auto bg-white" id="tl-history-list-mobile">
+                            <!-- Timeline Diisi JS -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- JS LOGIC -->
+    <script>
+        // --- KONFIGURASI DATABASE GOOGLE SHEETS ---
+        // Link Publish to Web format CSV (Ganti bagian "/e/..../" dengan milik Anda jika perlu, ini menggunakan contoh yg diberikan)
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRP6gGURVEtCt1N0fGCqkWLvwNlfYbwBKD9k3CJ24tpAjR_nH9x3O0Xq9PTJzRy9-XNCTyHBoEkOJqO/pub?output=csv";
+
+        // State Data
+        let rawData = [];
+        let allReports = [];
+        let groupedData = {}; // Kunci: NPSN, Value: { sekolah, objek: { namaObjek: [riwayat1, riwayat2] } }
+        let map = null;
+        let mapLayer = null;
+
+        // Bobot Kerusakan untuk Kalkulasi Trend
+        const bobotKondisi = { "Aman": 1, "Rusak Ringan": 2, "Rusak Sedang": 3, "Rusak Berat": 4 };
+
+        window.onload = () => {
+            initMap();
+            fetchData();
+        };
+
+        // --- FETCH DATA DARI GOOGLE SHEETS ---
+        function fetchData() {
+            document.getElementById('loading-screen').classList.remove('hidden');
+            document.getElementById('loading-screen').classList.add('flex');
+
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true, // Mengambil baris pertama sebagai nama kolom
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processCSVData(results.data);
+                },
+                error: function(err) {
+                    alert("Gagal mengambil data dari Google Sheets. Pastikan link sudah di-Publish to Web (CSV).");
+                    document.getElementById('loading-screen').classList.add('hidden');
+                }
+            });
+        }
+
+        // --- PENGOLAHAN DATA & DE-DUPLIKASI ---
+        function processCSVData(rows) {
+            allReports = [];
+            groupedData = {};
+            const processedIds = new Set(); // Mencegah ID duplikat akibat kirim ulang
+
+            rows.forEach(row => {
+                // Mencari kolom yang berisi JSON. Biasanya di GForm posisinya bisa berubah, kita cari value yang dimulai dengan "[{"
+                let jsonStr = null;
+                for (let key in row) {
+                    if (row[key] && row[key].trim().startsWith("[{") && row[key].trim().endsWith("}]")) {
+                        jsonStr = row[key].trim();
+                        break;
+                    }
+                }
+
+                if (jsonStr) {
+                    try {
+                        const payloads = JSON.parse(jsonStr);
+                        
+                        // Kolom standar dari form kita
+                        // Catatan: Nama kolom CSV mengikuti judul pertanyaan di Google Form. Kita tebak berdasarkan kata kunci.
+                        let namaSekolah = "Sekolah Tidak Diketahui";
+                        let npsn = "NPSN_XXX";
+                        let inspektur = "-";
+
+                        for (let key in row) {
+                            const kLow = key.toLowerCase();
+                            if (kLow.includes("sekolah") && !kLow.includes("npsn") && !kLow.includes("kode")) namaSekolah = row[key];
+                            if (kLow.includes("npsn") || kLow.includes("kode")) npsn = row[key];
+                            if (kLow.includes("inspektur") || kLow.includes("nama")) inspektur = row[key];
+                        }
+
+                        payloads.forEach(item => {
+                            // De-duplikasi berdasarkan ID (Timestamp millisecond)
+                            if (!processedIds.has(item.id)) {
+                                processedIds.add(item.id);
+                                
+                                // Gabungkan info sekolah ke dalam laporan
+                                item.namaSekolah = namaSekolah;
+                                item.npsn = npsn;
+                                item.inspektur = inspektur;
+                                allReports.push(item);
+
+                                // Grouping
+                                if (!groupedData[npsn]) {
+                                    groupedData[npsn] = { namaSekolah, npsn, inspektur, objek: {} };
+                                }
+                                
+                                const objKey = item.objek.trim().toLowerCase();
+                                if (!groupedData[npsn].objek[objKey]) {
+                                    groupedData[npsn].objek[objKey] = {
+                                        originalName: item.objek.trim(),
+                                        kategori: item.kategori,
+                                        history: []
+                                    };
+                                }
+                                groupedData[npsn].objek[objKey].history.push(item);
+                            }
+                        });
+
+                    } catch (e) { console.error("Gagal parse JSON di baris:", row); }
+                }
+            });
+
+            // Urutkan history tiap objek dari terlama ke terbaru (Ascending) untuk kalkulasi trend
+            for (let npsn in groupedData) {
+                for (let objKey in groupedData[npsn].objek) {
+                    groupedData[npsn].objek[objKey].history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                }
+            }
+
+            populateFilter();
+            filterDataSekolah();
+
+            setTimeout(() => {
+                document.getElementById('loading-screen').classList.add('hidden');
+                document.getElementById('loading-screen').classList.remove('flex');
+            }, 500);
+        }
+
+        function populateFilter() {
+            const select = document.getElementById('filter-sekolah');
+            const selectMobile = document.getElementById('filter-sekolah-mobile');
+            
+            let options = '<option value="ALL">Tampilkan Semua Sekolah</option>';
+            
+            Object.values(groupedData).forEach(sekolah => {
+                options += `<option value="${sekolah.npsn}">${sekolah.npsn} - ${sekolah.namaSekolah}</option>`;
+            });
+
+            select.innerHTML = options;
+            selectMobile.innerHTML = options;
+        }
+
+        // --- FILTER & RENDER TAMPILAN KIRI ---
+        function filterDataSekolah() {
+            const selectedNPSN = document.getElementById('filter-sekolah').value;
+            
+            // 1. Hitung Metrics Global
+            let totalSekolah = Object.keys(groupedData).length;
+            let totalObjek = 0;
+            let totalKritis = 0;
+            let totalLogs = allReports.length;
+
+            let listHTML = '';
+            mapLayer.clearLayers();
+            const mapBounds = [];
+
+            Object.values(groupedData).forEach(sekolah => {
+                // Lewati jika difilter
+                if (selectedNPSN !== 'ALL' && sekolah.npsn !== selectedNPSN) return;
+
+                let sekolahObjekCount = Object.keys(sekolah.objek).length;
+                totalObjek += sekolahObjekCount;
+
+                if(sekolahObjekCount > 0) {
+                    listHTML += `<div class="mb-4 mt-6 first:mt-0"><h4 class="text-sm font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-1 mb-3">${sekolah.npsn} - ${sekolah.namaSekolah}</h4>`;
+                }
+
+                Object.values(sekolah.objek).forEach(obj => {
+                    // Cek latest history
+                    const latest = obj.history[obj.history.length - 1];
+                    const isBg = obj.kategori === 'bangunan';
+                    const icon = isBg ? 'ph-buildings' : 'ph-package';
+                    
+                    let clr = 'blue'; let tagStr = '';
+                    
+                    if (isBg) {
+                        if (latest.kondisi === 'Rusak Berat') { totalKritis++; clr = 'red'; }
+                        else if (latest.kondisi === 'Aman') { clr = 'emerald'; }
+                        else { clr = 'amber'; }
+                        tagStr = latest.kondisi;
+                    } else {
+                        const rsk = parseInt(latest.qtyRusak) || 0;
+                        const bk = parseInt(latest.qtyBaik) || 0;
+                        clr = rsk > 0 ? (rsk >= bk ? 'red' : 'amber') : 'emerald';
+                        tagStr = `${bk} Baik | ${rsk} Rusak`;
+                    }
+
+                    // Logika Tren Singkat
+                    let trendIcon = '';
+                    if (obj.history.length > 1) {
+                        const prev = obj.history[obj.history.length - 2];
+                        if (isBg) {
+                            let diff = bobotKondisi[latest.kondisi] - bobotKondisi[prev.kondisi];
+                            if (diff < 0) trendIcon = '<span class="text-emerald-500 bg-emerald-50 p-1 rounded" title="Perbaikan"><i class="ph-bold ph-trend-up"></i></span>';
+                            else if (diff > 0) trendIcon = '<span class="text-red-500 bg-red-50 p-1 rounded" title="Memburuk"><i class="ph-bold ph-trend-down"></i></span>';
+                            else trendIcon = '<span class="text-slate-400 bg-slate-50 p-1 rounded" title="Stagnan"><i class="ph-bold ph-minus"></i></span>';
+                        } else {
+                            // Logic trend sarpras bisa didasarkan pada selisih jumlah rusak
+                            let prevRsk = parseInt(prev.qtyRusak) || 0;
+                            let rsk = parseInt(latest.qtyRusak) || 0;
+                            if (rsk < prevRsk) trendIcon = '<span class="text-emerald-500 bg-emerald-50 p-1 rounded" title="Perbaikan/Diganti"><i class="ph-bold ph-trend-up"></i></span>';
+                            else if (rsk > prevRsk) trendIcon = '<span class="text-red-500 bg-red-50 p-1 rounded" title="Kerusakan Bertambah"><i class="ph-bold ph-trend-down"></i></span>';
+                            else trendIcon = '<span class="text-slate-400 bg-slate-50 p-1 rounded" title="Stagnan"><i class="ph-bold ph-minus"></i></span>';
+                        }
+                    } else {
+                        trendIcon = '<span class="text-blue-400 bg-blue-50 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase" title="Data Baru">Baru</span>';
+                    }
+
+                    // Render List
+                    listHTML += `
+                    <div onclick="openTimeline('${sekolah.npsn}', '${obj.originalName.replace(/'/g, "\\'")}')" class="bg-white border border-slate-200 p-3 rounded-xl hover:border-blue-400 hover:shadow-md transition-all cursor-pointer flex items-center justify-between mb-2 fade-in group">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 bg-${clr}-100 text-${clr}-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors"><i class="ph-fill ${icon} text-xl"></i></div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm leading-tight">${obj.originalName}</h4>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] font-bold bg-${clr}-50 text-${clr}-700 px-1.5 py-0.5 rounded border border-${clr}-200">${tagStr}</span>
+                                    <span class="text-[10px] text-slate-400"><i class="ph-fill ph-clock"></i> ${new Date(latest.timestamp).toLocaleDateString('id-ID')}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            ${trendIcon}
+                            <i class="ph-bold ph-caret-right text-slate-300"></i>
+                        </div>
+                    </div>`;
+
+                    // Render Map Layer jika ada GeoJSON
+                    if (latest.geojson) {
+                        let mapColor = clr === 'red' ? '#ef4444' : (clr === 'amber' ? '#f59e0b' : '#10b981');
+                        
+                        const layer = L.geoJSON(latest.geojson, {
+                            style: { color: mapColor, weight: 2, fillColor: mapColor, fillOpacity: 0.5 },
+                            pointToLayer: function (f, latlng) {
+                                return L.circleMarker(latlng, { radius: 6, fillColor: mapColor, color: '#fff', weight: 2, fillOpacity: 0.9 });
+                            }
+                        });
+
+                        layer.bindPopup(`
+                            <div class="text-xs">
+                                <b class="block text-slate-800">${sekolah.namaSekolah}</b>
+                                <span class="text-slate-500">${obj.originalName}</span><br>
+                                <span class="mt-1 inline-block bg-slate-100 px-1 rounded border">Status: ${tagStr}</span>
+                            </div>
+                        `);
+                        
+                        mapLayer.addLayer(layer);
+                        mapBounds.push(layer.getBounds ? layer.getBounds() : layer.getLatLng()); // Kumpulkan koordinat untuk auto-fit
+                    }
+                });
+                
+                listHTML += `</div>`;
+            });
+
+            // Update DOM Metrics
+            if (selectedNPSN !== 'ALL') {
+                totalSekolah = 1; 
+                totalLogs = Object.values(groupedData[selectedNPSN].objek).reduce((sum, o) => sum + o.history.length, 0);
+            }
+
+            document.getElementById('stat-sekolah').innerText = totalSekolah;
+            document.getElementById('stat-objek').innerText = totalObjek;
+            document.getElementById('stat-kritis').innerText = totalKritis;
+            document.getElementById('stat-logs').innerText = totalLogs;
+
+            const ctn = document.getElementById('object-list-container');
+            ctn.innerHTML = listHTML || `<div class="text-center p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl"><p class="text-slate-400 font-bold">Tidak ada data objek.</p></div>`;
+
+            // Auto-fit Map
+            if (mapLayer.getLayers().length > 0) {
+                map.fitBounds(L.featureGroup(mapLayer.getLayers()).getBounds(), { padding: [30, 30], maxZoom: 18 });
+            } else {
+                map.setView([-0.789, 113.921], 5); // Default Indonesia jika kosong
+            }
+
+            // Reset Panel Kanan
+            resetTimelinePanel();
+        }
+
+        // --- MAP INISIALISASI ---
+        function initMap() {
+            map = L.map('global-map', { zoomControl: true }).setView([-0.789, 113.921], 5); // Center Indonesia
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri'
+            }).addTo(map);
+            mapLayer = new L.FeatureGroup().addTo(map);
+        }
+
+        // --- TIMELINE & TREN PANEL (KANAN) ---
+        function openTimeline(npsn, objName) {
+            const sekolah = groupedData[npsn];
+            const obj = sekolah.objek[objName.toLowerCase()];
+            if(!obj) return;
+
+            const isBg = obj.kategori === 'bangunan';
+
+            // Update Judul Panel
+            document.getElementById('tl-kategori').innerText = isBg ? 'Struktur Gedung' : 'Aset & Sarpras';
+            document.getElementById('tl-objek-nama').innerText = obj.originalName;
+            document.getElementById('tl-sekolah-nama').innerText = `${sekolah.namaSekolah} (NPSN: ${npsn})`;
+            
+            document.getElementById('tl-objek-nama-mobile').innerText = obj.originalName;
+            document.getElementById('tl-sekolah-nama-mobile').innerText = sekolah.namaSekolah;
+
+            // --- HITUNG TREN & STATUS ---
+            const trendBox = document.getElementById('tl-trend-box');
+            const trendBoxMobile = document.getElementById('tl-trend-box-mobile');
+            let trendHTML = '';
+
+            const historyDesc = [...obj.history]; // Sudah terurut lama -> baru
+            const latest = historyDesc[historyDesc.length - 1];
+
+            if (historyDesc.length === 1) {
+                trendHTML = `
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Analisis Kondisi</p>
+                <div class="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold border border-blue-200">
+                    <i class="ph-bold ph-info text-xl"></i> Perekaman Data Baru
+                </div>
+                <p class="text-xs text-slate-500 mt-2">Belum ada riwayat sebelumnya untuk dibandingkan.</p>`;
+            } else {
+                const prev = historyDesc[historyDesc.length - 2];
+                let statusMsg = ""; let statusIcon = ""; let statusColor = "";
+
+                if (isBg) {
+                    let diff = bobotKondisi[latest.kondisi] - bobotKondisi[prev.kondisi];
+                    if (diff < 0) { 
+                        statusMsg = diff <= -2 ? "Perbaikan Signifikan!" : "Terjadi Perbaikan"; 
+                        statusIcon = "ph-trend-up"; statusColor = "emerald"; 
+                    }
+                    else if (diff > 0) { 
+                        statusMsg = diff >= 2 ? "Kerusakan Mendadak / Kritis!" : "Kondisi Menurun"; 
+                        statusIcon = "ph-trend-down"; statusColor = "red"; 
+                    }
+                    else { 
+                        statusMsg = latest.kondisi === 'Aman' ? "Stagnan (Tetap Aman)" : "Stagnan (Belum Diperbaiki)"; 
+                        statusIcon = "ph-minus"; statusColor = latest.kondisi === 'Aman' ? "slate" : "amber"; 
+                    }
+                } else {
+                    let prevRsk = parseInt(prev.qtyRusak) || 0;
+                    let rsk = parseInt(latest.qtyRusak) || 0;
+                    if (rsk < prevRsk) { statusMsg = "Perbaikan / Aset Diganti"; statusIcon = "ph-trend-up"; statusColor = "emerald"; }
+                    else if (rsk > prevRsk) { statusMsg = "Kerusakan Aset Bertambah"; statusIcon = "ph-trend-down"; statusColor = "red"; }
+                    else { statusMsg = rsk === 0 ? "Stagnan (Semua Baik)" : "Stagnan (Masih Ada Rusak)"; statusIcon = "ph-minus"; statusColor = rsk === 0 ? "slate" : "amber"; }
+                }
+
+                trendHTML = `
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sistem Deteksi Perubahan</p>
+                <div class="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-${statusColor}-50 text-${statusColor}-700 rounded-xl font-black border border-${statusColor}-200 text-lg shadow-sm">
+                    <i class="ph-bold ${statusIcon} text-2xl"></i> ${statusMsg.toUpperCase()}
+                </div>
+                <p class="text-xs text-slate-500 mt-2">Perbandingan laporan terakhir dgn sebelumnya.</p>`;
+            }
+            trendBox.innerHTML = trendHTML;
+            trendBoxMobile.innerHTML = trendHTML;
+
+            // --- BUILD TIMELINE LIST ---
+            // Render dari terbaru ke terlama untuk tampilan list
+            const historyAsc = [...obj.history].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            let tlHTML = '';
+            historyAsc.forEach((r, idx) => {
+                const isLatest = idx === 0;
+                
+                let tagStr = ''; let clr = '';
+                if(isBg) {
+                    tagStr = r.kondisi;
+                    clr = r.kondisi === 'Rusak Berat' ? 'red' : (r.kondisi === 'Aman' ? 'emerald' : 'amber');
+                } else {
+                    const bk = parseInt(r.qtyBaik)||0; const rsk = parseInt(r.qtyRusak)||0;
+                    tagStr = `${bk} Baik | ${rsk} Rusak`;
+                    clr = rsk > 0 ? (rsk >= bk ? 'red' : 'amber') : 'emerald';
+                }
+
+                const dDate = new Date(r.timestamp).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+                const dTime = new Date(r.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+
+                tlHTML += `
+                <div class="timeline-item relative pl-12 pb-8 fade-in">
+                    <div class="timeline-line"></div>
+                    
+                    <div class="absolute left-2 top-0 w-10 h-10 rounded-full border-4 border-white ${isLatest ? 'bg-blue-600 shadow-md scale-110 z-10' : 'bg-slate-300 z-0'} flex items-center justify-center text-white">
+                        <i class="ph-bold ${isBg ? 'ph-buildings' : 'ph-package'} text-lg"></i>
+                    </div>
+                    
+                    <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl ${isLatest ? 'border-l-4 border-l-blue-500 shadow-sm bg-white' : ''}">
+                        <div class="flex justify-between items-start mb-3 border-b border-slate-100 pb-2">
+                            <div>
+                                <p class="text-xs font-black text-slate-800">${dDate}</p>
+                                <p class="text-[10px] text-slate-400 font-medium">${dTime} WIB | Inspektur: ${r.inspektur}</p>
+                            </div>
+                            <span class="text-[10px] font-bold bg-${clr}-100 text-${clr}-700 px-2 py-1 rounded border border-${clr}-200">${tagStr}</span>
+                        </div>
+                        <p class="text-sm text-slate-700 leading-relaxed">"${r.catatan}"</p>
+                    </div>
+                </div>
+                `;
+            });
+
+            document.getElementById('tl-history-list').innerHTML = tlHTML;
+            document.getElementById('tl-history-list-mobile').innerHTML = tlHTML;
+
+            // Buka Modal jika di Mobile
+            if(window.innerWidth < 1024) {
+                document.getElementById('modal-timeline-mobile').classList.remove('hidden');
+                document.getElementById('modal-timeline-mobile').classList.add('flex');
+            }
+        }
+
+        function closeTimelineMobile() {
+            document.getElementById('modal-timeline-mobile').classList.add('hidden');
+            document.getElementById('modal-timeline-mobile').classList.remove('flex');
+        }
+
+        function resetTimelinePanel() {
+            document.getElementById('tl-kategori').innerText = 'Analisis Tren';
+            document.getElementById('tl-objek-nama').innerText = 'Pilih Objek';
+            document.getElementById('tl-sekolah-nama').innerText = 'Klik salah satu objek di daftar kiri untuk memuat timeline.';
+            
+            document.getElementById('tl-trend-box').innerHTML = `
+                <p class="text-xs font-bold text-slate-500 uppercase">Status Tren Saat Ini</p>
+                <h3 class="text-xl font-black text-slate-400 mt-1">Belum Ada Data</h3>`;
+            
+            document.getElementById('tl-history-list').innerHTML = `
+                <div class="text-center p-8 text-slate-400">
+                    <i class="ph-fill ph-hand-pointing text-4xl mb-3"></i>
+                    <p class="text-sm font-bold">Silakan pilih objek di sebelah kiri.</p>
+                </div>`;
+        }
+    </script>
+</body>
+</html>
