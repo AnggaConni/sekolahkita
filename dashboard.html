@@ -669,6 +669,31 @@
                             if ((kLow.includes("inspektur") || kLow.includes("nama")) && !kLow.includes("sekolah")) inspektur = row[key];
                         }
 
+
+                        for (let key in row) {
+                            const kLow = key.toLowerCase();
+                            let val = row[key] ? String(row[key]).trim() : "";
+
+                            // 1. Set Nama Sekolah
+                            if (kLow.includes("sekolah") && !kLow.includes("npsn") && !kLow.includes("kode") && val !== "") {
+                                namaSekolah = val;
+                            }
+                            
+                            // 2. Set NPSN (Validasi Regex: HANYA izinkan angka masuk)
+                            if ((kLow.includes("npsn") || kLow.includes("kode")) && val !== "") {
+                                if (/^\d+$/.test(val)) { 
+                                    npsn = val; // Mengabaikan Kolom D yang isinya huruf
+                                }
+                            }
+
+                            // 3. Set Inspektur (Ambil dari kolom nama/inspektur, ATAU jika ada di NPSN yang isinya huruf)
+                            if ((kLow.includes("inspektur") || kLow.includes("nama") || kLow === "npsn") && !kLow.includes("sekolah") && val !== "") {
+                                if (!/^\d+$/.test(val) && val !== "Data Terenkapsulasi") {
+                                    inspektur = val;
+                                }
+                            }
+                        }
+
                         payloads.forEach(item => {
                             if (!processedIds.has(item.id)) {
                                 processedIds.add(item.id);
