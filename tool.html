@@ -347,7 +347,7 @@
                             <!-- Foto (Dengan Dukungan URL Drive/Web) -->
                             <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center relative bg-slate-50">
                                 <div id="photo-preview-container" class="hidden relative">
-                                    <img id="photo-preview" src="" alt="Preview" class="rounded-lg max-h-48 mx-auto object-contain shadow-sm" onerror="this.src='https://via.placeholder.com/400x300?text=Gambar+Tidak+Dapat+Dimuat'"/>
+                                    <img id="photo-preview" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Preview" class="rounded-lg max-h-48 mx-auto object-contain shadow-sm" onerror="this.src='https://via.placeholder.com/400x300?text=Gambar+Tidak+Dapat+Dimuat'"/>
                                     <button type="button" onclick="removePhoto()" class="absolute top-2 right-2 bg-red-500 text-white h-7 w-7 rounded-full flex items-center justify-center font-bold shadow">X</button>
                                 </div>
                                 <div id="photo-input-container">
@@ -1313,11 +1313,6 @@ function generatePDF() {
     btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Menyiapkan Laporan...';
 
     try {
-        // Membuat wadah rahasia/sementara untuk dirender ke PDF
-        const container = document.createElement('div');
-        container.className = 'p-8 bg-white text-slate-800 font-sans';
-        container.style.width = '800px';
-
         const d = new Date().toLocaleDateString('id-ID', {weekday: 'long', day:'numeric', month:'long', year:'numeric'});
 
         let tableRows = '';
@@ -1325,7 +1320,6 @@ function generatePDF() {
         
         groups.forEach((g, idx) => {
             const last = g.history[g.history.length-1]; 
-            
             let status = '';
             let statusClr = '';
             
@@ -1347,34 +1341,38 @@ function generatePDF() {
             </tr>`;
         });
 
-        // Menyusun kerangka HTML yang akan diconvert
-        container.innerHTML = `
-            <div style="border-bottom: 4px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
-                <div>
-                    <h1 style="font-size: 28px; font-weight: 900; margin: 0; color: #1e293b; letter-spacing: -0.5px;">LAPORAN INSPEKSI DRR & SARPRAS</h1>
-                    <h2 style="font-size: 20px; font-weight: 700; margin: 5px 0 0 0; color: #475569;">${schoolInfo.nama}</h2>
-                    <p style="font-size: 14px; margin: 5px 0 0 0; color: #64748b;">NPSN: <strong>${schoolInfo.npsn}</strong> | Inspektur: <strong>${schoolInfo.inspektur}</strong></p>
-                </div>
-                <div style="text-align: right;">
-                    <p style="font-size: 12px; font-weight: bold; margin: 0; color: #1e293b; text-transform: uppercase;">Tanggal Cetak Laporan</p>
-                    <p style="font-size: 14px; margin: 2px 0 0 0; color: #64748b;">${d}</p>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <h3 style="font-size: 16px; font-weight: bold; margin: 0 0 15px 0; background-color: #f1f5f9; padding: 10px; border-radius: 6px;">Ringkasan Status Kondisi Terkini</h3>
-                <table style="width: 100%; text-align: left; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #1e293b; color: white;">
-                            <th style="padding: 10px 8px; font-size: 14px;">No</th>
-                            <th style="padding: 10px 8px; font-size: 14px;">Nama Objek</th>
-                            <th style="padding: 10px 8px; font-size: 14px;">Kategori</th>
-                            <th style="padding: 10px 8px; font-size: 14px;">Status / Kondisi</th>
-                            <th style="padding: 10px 8px; font-size: 14px;">Update Terakhir</th>
-                        </tr>
-                    </thead>
-                    <tbody>${tableRows}</tbody>
+        // KUNCI PERBAIKAN: Kita buat HTML ini sebagai "String" murni dengan pembungkus background putih
+        const htmlContent = `
+            <div style="padding: 20px; font-family: Helvetica, Arial, sans-serif; color: #1e293b; background: #ffffff;">
+                <table style="width: 100%; border-bottom: 4px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px;">
+                    <tr>
+                        <td style="vertical-align: bottom;">
+                            <h1 style="font-size: 28px; font-weight: 900; margin: 0; color: #1e293b; letter-spacing: -0.5px;">LAPORAN INSPEKSI DRR</h1>
+                            <h2 style="font-size: 20px; font-weight: 700; margin: 5px 0 0 0; color: #475569;">${schoolInfo.nama}</h2>
+                            <p style="font-size: 14px; margin: 5px 0 0 0; color: #64748b;">NPSN: <strong>${schoolInfo.npsn}</strong> | Inspektur: <strong>${schoolInfo.inspektur}</strong></p>
+                        </td>
+                        <td style="text-align: right; vertical-align: bottom;">
+                            <p style="font-size: 12px; font-weight: bold; margin: 0; color: #1e293b; text-transform: uppercase;">Tanggal Cetak</p>
+                            <p style="font-size: 14px; margin: 2px 0 0 0; color: #64748b;">${d}</p>
+                        </td>
+                    </tr>
                 </table>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="font-size: 16px; font-weight: bold; margin: 0 0 15px 0; background-color: #f1f5f9; padding: 10px; border-radius: 6px;">Ringkasan Status Kondisi Terkini</h3>
+                    <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #1e293b; color: white;">
+                                <th style="padding: 10px 8px; font-size: 14px;">No</th>
+                                <th style="padding: 10px 8px; font-size: 14px;">Nama Objek</th>
+                                <th style="padding: 10px 8px; font-size: 14px;">Kategori</th>
+                                <th style="padding: 10px 8px; font-size: 14px;">Status / Kondisi</th>
+                                <th style="padding: 10px 8px; font-size: 14px;">Update Terakhir</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
             </div>
         `;
 
@@ -1386,30 +1384,29 @@ function generatePDF() {
             jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
 
-        // SAFETY: Jika setelah 8 detik PDF gagal merender, kembalikan tombol secara paksa
         const fallbackTimeout = setTimeout(() => {
             btn.innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
         }, 8000);
 
-        // Proses generate
         if(typeof html2pdf !== 'undefined') {
-            html2pdf().set(opt).from(container).save().then(() => {
-                clearTimeout(fallbackTimeout);
+            // Memberikan string HTML langsung ke library (Bukan elemen layar)
+            html2pdf().set(opt).from(htmlContent).save().then(() => {
+                clearTimeout(fallbackTimeout); 
                 btn.innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
             }).catch(err => {
                 clearTimeout(fallbackTimeout);
-                console.error(err);
-                alert("Gagal mencetak laporan PDF. Coba kembali beberapa saat lagi.");
+                console.error("Kesalahan render PDF:", err);
+                alert("Gagal memproses PDF. Periksa koneksi internet Anda.");
                 btn.innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
             });
         } else {
-            throw new Error("Library html2pdf belum dimuat.");
+            throw new Error("Library PDF belum selesai dimuat.");
         }
 
     } catch (error) {
         console.error(error);
-        alert("Sistem PDF belum siap karena koneksi terputus. Muat ulang halaman.");
-        btn.innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
+        alert("Sistem pencetak PDF belum siap. Silakan muat ulang halaman.");
+        document.getElementById('btn-print-pdf').innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
     }
 }
 
