@@ -1,1 +1,958 @@
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SekolahAman - Inspeksi DRR & Sarpras</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <style>
+        .leaflet-container { z-index: 10 !important; }
+        .leaflet-draw-tooltip { z-index: 15 !important; }
+        .leaflet-draw-actions { display: none !important; }
+        
+        .view-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans overflow-hidden">
+
+    <!-- MODAL SETUP AWAL SEKOLAH -->
+    <div id="modal-setup" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex-col justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl transform transition-all">
+            <div class="text-center mb-6">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="ph-fill ph-buildings text-3xl text-blue-600"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800">Konfigurasi Sekolah</h2>
+                <p class="text-sm text-slate-500 mt-1">Satu aplikasi ini akan dikunci untuk satu sekolah.</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Nama Sekolah</label>
+                    <input type="text" id="setup-nama-sekolah" placeholder="Misal: SDN 01 Pagi" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">NPSN / Kode Sekolah</label>
+                    <input type="number" id="setup-npsn" placeholder="Misal: 20101234" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Nama Inspektur (Anda)</label>
+                    <input type="text" id="setup-nama-inspektur" placeholder="Nama Lengkap" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <button onclick="saveSetup()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors mt-2">
+                    Simpan Profil Sekolah
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RIWAYAT / HISTORIS -->
+    <div id="modal-historis" class="fixed inset-0 bg-slate-900/80 z-[150] hidden flex-col justify-end md:justify-center items-center p-0 md:p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-t-3xl md:rounded-3xl w-full max-w-lg md:max-h-[80vh] flex flex-col shadow-2xl transform transition-transform" style="max-height: 90vh;">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur z-10 rounded-t-3xl">
+                <div>
+                    <h3 class="font-bold text-lg text-slate-800" id="hist-title">Riwayat Objek</h3>
+                    <p class="text-xs text-slate-500 font-medium" id="hist-kategori">Kategori</p>
+                </div>
+                <button onclick="closeHistoris()" class="bg-slate-100 p-2 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            <div class="p-5 overflow-y-auto flex-1">
+                <div class="relative border-l-2 border-slate-200 ml-3 space-y-6" id="hist-timeline">
+                    <!-- Timeline diisi oleh JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-container" class="flex flex-col md:flex-row h-[100dvh] w-full">
+
+        <!-- SIDEBAR / BOTTOM NAV -->
+        <nav class="fixed md:relative bottom-0 w-full md:w-64 bg-white border-t md:border-t-0 md:border-r border-slate-200 z-50 flex md:flex-col justify-around md:justify-start pb-safe md:pb-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:shadow-none order-2 md:order-1 overflow-x-auto">
+            <div class="hidden md:flex items-center gap-3 px-6 py-6 border-b border-slate-100 shrink-0">
+                <i class="ph-fill ph-shield-check text-3xl text-blue-600"></i>
+                <div>
+                    <h1 class="text-xl font-black text-slate-800 tracking-tight leading-none">SekolahAman</h1>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-1">DRR & Sarpras</p>
+                </div>
+            </div>
+            <div class="flex md:flex-col w-max md:w-full px-2 md:px-4 py-2 md:py-6 gap-1 md:gap-2">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex-1 md:flex-none flex flex-col md:flex-row items-center md:justify-start p-2 md:px-4 md:py-3 rounded-xl text-blue-600 bg-blue-50 transition-colors shrink-0 px-4">
+                    <i class="ph-fill ph-squares-four text-2xl md:text-xl md:mr-3"></i>
+                    <span class="text-[10px] md:text-sm font-semibold mt-1 md:mt-0">Dasbor</span>
+                </button>
+                <button onclick="switchTab('inspeksi')" id="nav-inspeksi" class="nav-btn flex-1 md:flex-none flex flex-col md:flex-row items-center md:justify-start p-2 md:px-4 md:py-3 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors shrink-0 px-4">
+                    <i class="ph-fill ph-clipboard-text text-2xl md:text-xl md:mr-3"></i>
+                    <span class="text-[10px] md:text-sm font-semibold mt-1 md:mt-0">Form Baru</span>
+                </button>
+                <button onclick="switchTab('pemantauan')" id="nav-pemantauan" class="nav-btn flex-1 md:flex-none flex flex-col md:flex-row items-center md:justify-start p-2 md:px-4 md:py-3 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors shrink-0 px-4">
+                    <i class="ph-fill ph-table text-2xl md:text-xl md:mr-3"></i>
+                    <span class="text-[10px] md:text-sm font-semibold mt-1 md:mt-0">Pemantauan</span>
+                </button>
+                <button onclick="switchTab('risiko')" id="nav-risiko" class="nav-btn flex-1 md:flex-none flex flex-col md:flex-row items-center md:justify-start p-2 md:px-4 md:py-3 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors shrink-0 px-4">
+                    <i class="ph-fill ph-warning-octagon text-2xl md:text-xl md:mr-3"></i>
+                    <span class="text-[10px] md:text-sm font-semibold mt-1 md:mt-0">Triase</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- CONTENT AREA -->
+        <main class="flex-1 flex flex-col order-1 md:order-2 h-full overflow-hidden relative">
+            <header class="md:hidden bg-blue-700 text-white p-4 shadow-md sticky top-0 z-40 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="ph-fill ph-shield-check text-2xl text-blue-300"></i>
+                    <h1 class="text-xl font-bold">SekolahAman</h1>
+                </div>
+                <div class="text-[10px] font-bold bg-blue-800 px-3 py-1.5 rounded-full truncate max-w-[120px]" id="header-school-name">Belum Diset</div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8 w-full max-w-4xl md:mx-auto">
+                
+                <!-- 1. DASHBOARD -->
+                <section id="view-dashboard" class="view-section active space-y-6">
+                    <!-- Profil Sekolah -->
+                    <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Inspeksi</p>
+                            <h2 class="text-xl md:text-2xl font-black text-slate-800" id="dash-sekolah">Nama Sekolah</h2>
+                            <p class="text-xs text-slate-500 font-medium mt-1">NPSN: <span id="dash-npsn">-</span> | Inspektur: <span id="dash-inspektur">-</span></p>
+                        </div>
+                        <button onclick="resetSetup()" class="text-slate-400 hover:text-red-500" title="Ganti Sekolah">
+                            <i class="ph-fill ph-gear text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Metrics -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
+                            <i class="ph-fill ph-file-text absolute -right-2 -bottom-2 text-6xl opacity-20"></i>
+                            <p class="text-[10px] font-bold text-blue-100 uppercase">Total Entri Data</p>
+                            <h3 class="text-3xl font-black mt-1" id="dash-total-lap">0</h3>
+                        </div>
+                        <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
+                            <i class="ph-fill ph-package absolute -right-2 -bottom-2 text-6xl opacity-20"></i>
+                            <p class="text-[10px] font-bold text-indigo-100 uppercase">Objek Unik Dipantau</p>
+                            <h3 class="text-3xl font-black mt-1" id="dash-total-objek">0</h3>
+                        </div>
+                        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
+                            <i class="ph-fill ph-warning absolute -right-2 -bottom-2 text-6xl opacity-20"></i>
+                            <p class="text-[10px] font-bold text-red-100 uppercase">Gedung Kritis</p>
+                            <h3 class="text-3xl font-black mt-1" id="dash-total-kritis">0</h3>
+                        </div>
+                        <div class="bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
+                            <i class="ph-fill ph-cloud-arrow-up absolute -right-2 -bottom-2 text-6xl opacity-20"></i>
+                            <p class="text-[10px] font-bold text-slate-300 uppercase">Belum Sinkron</p>
+                            <h3 class="text-3xl font-black mt-1 text-amber-400" id="dash-total-sync">0</h3>
+                        </div>
+                    </div>
+
+                    <button onclick="openSyncModal()" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-700 px-6 py-4 rounded-2xl font-bold transition-transform active:scale-95 flex items-center justify-center gap-2 border border-blue-300">
+                        <i class="ph-bold ph-paper-plane-tilt text-xl"></i>
+                        Kirim Semua Data ke Database (Google Form)
+                    </button>
+                </section>
+
+                <!-- 2. PEMANTAUAN (VIEW ASET & BANGUNAN - GROUPED) -->
+                <section id="view-pemantauan" class="view-section space-y-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-0 z-20">
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-3"><i class="ph-bold ph-table text-blue-600"></i> Pantau Objek</h2>
+                        <div class="relative">
+                            <i class="ph-bold ph-magnifying-glass absolute left-4 top-3.5 text-slate-400 text-lg"></i>
+                            <input type="text" id="search-pemantauan" oninput="renderPemantauan()" placeholder="Cari nama gedung atau barang..." class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-shadow" />
+                        </div>
+                    </div>
+
+                    <div id="pemantauan-container" class="space-y-3">
+                        <!-- Diisi oleh JS: Daftar Objek Unik -->
+                    </div>
+                </section>
+
+                <!-- 3. INSPEKSI LAPANGAN (FORM BARU / EDIT RAW) -->
+                <section id="view-inspeksi" class="view-section space-y-4">
+                    <div id="inspeksi-list">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-800">Log Entri Mentah</h2>
+                                <p class="text-xs text-slate-500 mt-1"><i class="ph-fill ph-clock"></i> Riwayat Semua Ketikan</p>
+                            </div>
+                            <button onclick="toggleFormInspeksi(true)" class="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 hover:bg-blue-700 active:scale-95 transition">
+                                <i class="ph-bold ph-plus"></i> Form Baru
+                            </button>
+                        </div>
+                        <div id="inspeksi-container" class="space-y-4"></div>
+                    </div>
+
+                    <div id="inspeksi-form" class="hidden pb-10">
+                        <button type="button" onclick="toggleFormInspeksi(false)" class="mb-4 text-slate-500 text-sm font-semibold flex items-center gap-1 hover:text-slate-800">
+                            <i class="ph-bold ph-arrow-left"></i> Batal / Kembali
+                        </button>
+
+                        <form onsubmit="saveInspeksi(event)" class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 space-y-5">
+                            <div class="flex justify-between items-end border-b border-slate-100 pb-3">
+                                <div>
+                                    <h2 id="form-title-head" class="text-xl font-bold text-slate-800">Form Inspeksi Baru</h2>
+                                    <p id="form-subtitle-head" class="text-xs text-slate-500">Catat kondisi lapangan hari ini.</p>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Kategori Inspeksi</label>
+                                <select id="form-kategori" onchange="handleFormKategori()" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-70 disabled:bg-slate-200">
+                                    <option value="bangunan">Struktur Bangunan (Gedung/Atap/Lantai)</option>
+                                    <option value="sarpras">Aset & Sarpras (Sapu, TV, Meja, dll)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase" id="label-objek">Nama Gedung / Ruangan / Barang</label>
+                                <input type="text" id="form-objek" placeholder="Misal: Gedung Kelas 1A / TV LED Ruang Guru" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 read-only:bg-slate-200 read-only:text-slate-600" required>
+                                <p id="hint-objek" class="text-[10px] text-amber-600 font-bold mt-1 hidden"><i class="ph-bold ph-lock"></i> Nama dikunci karena mode Update Kondisi Historis.</p>
+                            </div>
+
+                            <!-- Kondisi (Bangunan) -->
+                            <div id="container-kondisi-bangunan">
+                                <label class="text-xs font-bold text-slate-500 uppercase">Tingkat Kerusakan Saat Ini</label>
+                                <select id="form-kondisi" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                                    <option value="Aman">🟢 Aman (Tidak Ada Kerusakan)</option>
+                                    <option value="Rusak Ringan">🟡 Rusak Ringan (Retak Rambut, Cat Mengelupas)</option>
+                                    <option value="Rusak Sedang">🟠 Rusak Sedang (Atap Bocor, Plafon Berlubang)</option>
+                                    <option value="Rusak Berat">🔴 Rusak Berat (Struktur Miring, Kayu Lapuk, Rawan Rubuh)</option>
+                                </select>
+                            </div>
+
+                            <!-- Kuantitas (Aset) -->
+                            <div id="container-kuantitas-aset" class="hidden grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase">Jumlah Baik (Realita)</label>
+                                    <input type="number" id="form-qty-baik" placeholder="0" min="0" class="w-full mt-1 p-3 bg-emerald-50 border border-emerald-200 rounded-xl outline-none font-bold text-emerald-700">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase">Jumlah Rusak (Realita)</label>
+                                    <input type="number" id="form-qty-rusak" placeholder="0" min="0" class="w-full mt-1 p-3 bg-red-50 border border-red-200 rounded-xl outline-none font-bold text-red-700">
+                                </div>
+                            </div>
+
+                            <!-- Catatan Detail -->
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Deskripsi Perubahan / Kerusakan</label>
+                                <textarea id="form-catatan" placeholder="Jelaskan apa yang berubah sejak inspeksi sebelumnya..." class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 h-24 text-sm" required></textarea>
+                            </div>
+
+                            <!-- Map Area -->
+                            <div id="container-map-bangunan" class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm font-bold text-blue-800 flex items-center gap-2"><i class="ph-fill ph-map-trifold"></i> Tandai Ulang Area (Opsional)</span>
+                                    <button type="button" onclick="openMap()" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm">Buka Peta</button>
+                                </div>
+                                <p id="form-map-status" class="text-xs text-blue-600 font-medium">Gunakan jika area kerusakan meluas.</p>
+                                <input type="hidden" id="form-geojson">
+                            </div>
+
+                            <!-- Map Wrapper -->
+                            <div id="map-wrapper" class="hidden bg-white flex-col transition-all mb-4 fixed inset-0 z-[100]">
+                                <div class="p-3 bg-slate-800 text-white flex justify-between items-center z-10">
+                                    <h3 class="font-bold flex items-center gap-2"><i class="ph-bold ph-map-pin"></i> Area Terdampak Baru</h3>
+                                    <button type="button" onclick="closeMap()" class="font-bold text-slate-900 bg-white px-4 py-1.5 rounded-lg text-sm">Selesai</button>
+                                </div>
+                                <div id="map-container" class="w-full flex-1 relative z-0 bg-slate-200"></div>
+                            </div>
+
+                            <!-- Foto -->
+                            <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center relative bg-slate-50">
+                                <div id="photo-preview-container" class="hidden relative">
+                                    <img id="photo-preview" src="" alt="Preview" class="rounded-lg max-h-48 mx-auto object-contain shadow-sm" />
+                                    <button type="button" onclick="removePhoto()" class="absolute top-2 right-2 bg-red-500 text-white h-7 w-7 rounded-full flex items-center justify-center font-bold shadow">X</button>
+                                </div>
+                                <div id="photo-input-container">
+                                    <input type="file" accept="image/*" capture="environment" onchange="handlePhoto(event)" class="hidden" id="camera-input" />
+                                    <label for="camera-input" class="cursor-pointer flex flex-col items-center justify-center gap-2">
+                                        <div class="bg-blue-100 p-3 rounded-full text-blue-600"><i class="ph-fill ph-camera text-2xl"></i></div>
+                                        <span class="text-sm font-bold text-slate-600">Ambil Foto Kondisi Terkini</span>
+                                        <p class="text-[10px] text-red-500 font-bold">*Bukti log riwayat baru</p>
+                                    </label>
+                                </div>
+                                <input type="hidden" id="form-photo-base64">
+                            </div>
+
+                            <button type="submit" class="w-full bg-slate-800 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:bg-slate-900 transition-transform active:scale-95 flex justify-center items-center gap-2 mt-2">
+                                <i class="ph-bold ph-floppy-disk"></i> Post / Simpan Laporan
+                            </button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- 4. CEK RISIKO TRIASE -->
+                <section id="view-risiko" class="view-section space-y-5">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="p-3 bg-amber-100 text-amber-600 rounded-xl"><i class="ph-fill ph-warning-octagon text-2xl"></i></div>
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-800">Kalkulator Triase Gedung</h2>
+                                <p class="text-xs text-slate-500">Deteksi dini potensi gedung rubuh.</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 mb-6">
+                            <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-blue-50 transition">
+                                <input type="checkbox" class="risk-check mt-1 w-5 h-5 accent-red-600" value="30">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-700">Dinding retak struktural (Tembus/Diagonal)</p>
+                                    <p class="text-[10px] text-slate-500">Retakan lebih lebar dari 2mm menembus dua sisi bata.</p>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-blue-50 transition">
+                                <input type="checkbox" class="risk-check mt-1 w-5 h-5 accent-red-600" value="40">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-700">Kuda-kuda atap/kayu lapuk dimakan rayap</p>
+                                    <p class="text-[10px] text-slate-500">Jika diketuk bunyinya nyaring kosong atau serbuk kayu berjatuhan.</p>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-blue-50 transition">
+                                <input type="checkbox" class="risk-check mt-1 w-5 h-5 accent-red-600" value="40">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-700">Tiang penyangga/Kolom beton melengkung</p>
+                                    <p class="text-[10px] text-slate-500">Struktur utama tidak lagi tegak lurus secara visual.</p>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-blue-50 transition">
+                                <input type="checkbox" class="risk-check mt-1 w-5 h-5 accent-red-600" value="20">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-700">Plafon sering bocor dan merembes berat</p>
+                                    <p class="text-[10px] text-slate-500">Meningkatkan risiko korsleting listrik dan ambrolnya gypsum.</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <button onclick="hitungRisiko()" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-900 transition">Hitung Skor Keselamatan</button>
+
+                        <div id="risk-result" class="hidden mt-6 text-center p-5 rounded-2xl border">
+                            <p class="text-xs font-bold uppercase tracking-widest mb-1" id="risk-label">Status Gedung</p>
+                            <h3 class="text-3xl font-black mb-2" id="risk-title">AMAN</h3>
+                            <p class="text-sm font-medium" id="risk-desc">Gedung masih layak digunakan.</p>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL SINKRONISASI (GFORM) -->
+    <div id="modal-sync" class="fixed inset-0 bg-slate-900/80 z-[200] hidden flex-col justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative">
+            <button onclick="closeSyncModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
+            
+            <div class="text-center mb-6 mt-2">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="ph-fill ph-google-logo text-3xl text-blue-600"></i>
+                </div>
+                <h2 class="text-xl font-black text-slate-800">Sinkronisasi Form</h2>
+                <p class="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded-lg">Kirim seluruh riwayat ini ke Google Form.</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">URL Google Form (formResponse)</label>
+                    <input type="text" id="sync-url" placeholder="https://docs.google.com/forms/d/e/.../formResponse" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+                </div>
+                <button id="btn-do-sync" onclick="executeSync()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex justify-center items-center gap-2">
+                    <i class="ph-bold ph-paper-plane-tilt"></i> Kirim <span id="sync-amount">0</span> Entri Data
+                </button>
+                <p id="sync-feedback" class="text-xs text-center font-bold hidden"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIC JAVASCRIPT -->
+    <script>
+        // --- STATE & INISIALISASI ---
+        let schoolInfo = JSON.parse(localStorage.getItem('sekolah_info')) || null;
+        let reports = JSON.parse(localStorage.getItem('sekolah_reports')) || [];
+        
+        let map = null;
+        let drawnItems = null;
+        let currentGeoJSON = null;
+        let editingId = null;
+
+        window.onload = () => {
+            if (!schoolInfo) {
+                document.getElementById('modal-setup').classList.remove('hidden');
+                document.getElementById('modal-setup').classList.add('flex');
+            } else {
+                applySchoolInfo();
+            }
+            switchTab('dashboard');
+        };
+
+        // --- KONFIGURASI SEKOLAH ---
+        function saveSetup() {
+            const nama = document.getElementById('setup-nama-sekolah').value;
+            const npsn = document.getElementById('setup-npsn').value;
+            const inspektur = document.getElementById('setup-nama-inspektur').value;
+
+            if(!nama || !npsn || !inspektur) return alert("Semua kolom wajib diisi!");
+            schoolInfo = { nama, npsn, inspektur };
+            localStorage.setItem('sekolah_info', JSON.stringify(schoolInfo));
+            
+            document.getElementById('modal-setup').classList.add('hidden');
+            document.getElementById('modal-setup').classList.remove('flex');
+            applySchoolInfo();
+        }
+
+        function applySchoolInfo() {
+            document.getElementById('header-school-name').innerText = schoolInfo.nama;
+            document.getElementById('dash-sekolah').innerText = schoolInfo.nama;
+            document.getElementById('dash-npsn').innerText = schoolInfo.npsn;
+            document.getElementById('dash-inspektur').innerText = schoolInfo.inspektur;
+            updateDashboard();
+        }
+
+        function resetSetup() {
+            if(confirm("Ganti profil sekolah? Data laporan tidak akan dihapus otomatis.")) {
+                localStorage.removeItem('sekolah_info');
+                location.reload();
+            }
+        }
+
+        // --- NAVIGATION ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + tabId).classList.add('active');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'bg-blue-50');
+                btn.classList.add('text-slate-400', 'hover:text-blue-600', 'hover:bg-blue-50/50');
+            });
+            const activeBtn = document.getElementById('nav-' + tabId);
+            activeBtn.classList.add('text-blue-600', 'bg-blue-50');
+            activeBtn.classList.remove('text-slate-400', 'hover:text-blue-600', 'hover:bg-blue-50/50');
+
+            if(tabId === 'inspeksi') renderReports();
+            if(tabId === 'pemantauan') renderPemantauan();
+            if(tabId === 'dashboard') updateDashboard();
+        }
+
+        // --- GROUPING LOGIC (CORE DARI SISTEM HISTORIS) ---
+        // Menggabungkan data berdasarkan nama objek yang sama untuk mencari kondisi terakhir dan riwayatnya.
+        function getGroupedObjects() {
+            const grouped = {};
+            // Sort ascending dulu agar push history urut dari lama ke baru
+            const sortedReports = [...reports].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            sortedReports.forEach(r => {
+                const key = r.objek.trim().toLowerCase();
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        key: key,
+                        originalName: r.objek.trim(),
+                        kategori: r.kategori,
+                        history: []
+                    };
+                }
+                grouped[key].history.push(r);
+            });
+
+            // Ubah jadi array agar mudah di filter/render, sort berdasarkan update terbaru
+            return Object.values(grouped).sort((a, b) => {
+                const latestA = new Date(a.history[a.history.length-1].timestamp);
+                const latestB = new Date(b.history[b.history.length-1].timestamp);
+                return latestB - latestA;
+            });
+        }
+
+        // --- TAB PEMANTAUAN (VIEW ASET / BANGUNAN) ---
+        function renderPemantauan() {
+            const container = document.getElementById('pemantauan-container');
+            const searchInput = document.getElementById('search-pemantauan').value.toLowerCase();
+            const groups = getGroupedObjects();
+
+            const filteredGroups = groups.filter(g => g.originalName.toLowerCase().includes(searchInput));
+
+            if (filteredGroups.length === 0) {
+                container.innerHTML = `<div class="text-center p-8 bg-white border border-dashed rounded-xl shadow-sm"><p class="text-slate-400 font-bold">Belum ada objek yang dipantau.</p></div>`;
+                return;
+            }
+
+            const html = filteredGroups.map(g => {
+                const latestReport = g.history[g.history.length - 1]; // Array terakhir adalah yang terbaru karena sort ascending saat map
+                const isBg = g.kategori === 'bangunan';
+                const icon = isBg ? 'ph-buildings' : 'ph-package';
+                
+                let clr = 'blue';
+                let tagStr = '';
+                if(isBg) {
+                    clr = latestReport.kondisi === 'Rusak Berat' ? 'red' : (latestReport.kondisi === 'Aman' ? 'emerald' : 'amber');
+                    tagStr = latestReport.kondisi;
+                } else {
+                    const rsk = parseInt(latestReport.qtyRusak) || 0;
+                    const bk = parseInt(latestReport.qtyBaik) || 0;
+                    clr = rsk > 0 ? (rsk >= bk ? 'red' : 'amber') : 'emerald';
+                    tagStr = `${bk} Baik | ${rsk} Rusak`;
+                }
+
+                const totalUpdates = g.history.length;
+                const dateStr = new Date(latestReport.timestamp).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
+
+                return `
+                <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-blue-300 transition-all">
+                    <div class="flex items-start gap-4 flex-1">
+                        <div class="p-3 bg-${clr}-100 text-${clr}-600 rounded-xl mt-1"><i class="ph-fill ${icon} text-2xl"></i></div>
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-800 leading-tight">${g.originalName}</h3>
+                            <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider mb-2">Update Terakhir: ${dateStr}</p>
+                            <span class="text-xs font-bold bg-${clr}-50 text-${clr}-700 border border-${clr}-200 px-2.5 py-1 rounded-md inline-block">${tagStr}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-row md:flex-col gap-2 w-full md:w-auto shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+                        <button onclick="triggerUpdateObjek('${g.originalName}', '${g.kategori}')" class="flex-1 md:flex-none bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-lg hover:bg-slate-900 transition shadow-sm text-center">
+                            <i class="ph-bold ph-arrows-clockwise"></i> Update Kondisi
+                        </button>
+                        <button onclick="showHistoris('${g.key}')" class="flex-1 md:flex-none bg-blue-50 text-blue-700 text-xs font-bold px-4 py-2.5 rounded-lg hover:bg-blue-100 border border-blue-200 transition text-center">
+                            <i class="ph-bold ph-clock-counter-clockwise"></i> Riwayat (${totalUpdates})
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = html;
+        }
+
+        // --- AKSI: UPDATE KONDISI (POST BARU DENGAN NAMA DIKUNCI) ---
+        function triggerUpdateObjek(nama, kategori) {
+            switchTab('inspeksi');
+            document.getElementById('inspeksi-list').classList.add('hidden');
+            document.getElementById('inspeksi-form').classList.remove('hidden');
+
+            // Set Form Type Update
+            editingId = null; // Memastikan ini post baru (Append)
+            document.getElementById('form-title-head').innerText = "Update Kondisi Historis";
+            document.getElementById('form-subtitle-head').innerText = `Melaporkan kondisi terkini untuk objek ini.`;
+
+            // Lock Kategori
+            const elKategori = document.getElementById('form-kategori');
+            elKategori.value = kategori;
+            elKategori.disabled = true; // Lock dropdown
+            handleFormKategori();
+
+            // Lock Nama Objek
+            const elObjek = document.getElementById('form-objek');
+            elObjek.value = nama;
+            elObjek.readOnly = true;
+            document.getElementById('hint-objek').classList.remove('hidden');
+
+            // Reset sisanya
+            document.getElementById('form-catatan').value = '';
+            document.getElementById('form-qty-baik').value = '';
+            document.getElementById('form-qty-rusak').value = '';
+            removePhoto();
+        }
+
+        // --- AKSI: LIHAT HISTORIS (TIMELINE MODAL) ---
+        function showHistoris(groupKey) {
+            const groups = getGroupedObjects();
+            const group = groups.find(g => g.key === groupKey);
+            if(!group) return;
+
+            document.getElementById('hist-title').innerText = group.originalName;
+            document.getElementById('hist-kategori').innerText = group.kategori === 'bangunan' ? 'Kategori: Struktur Gedung' : 'Kategori: Aset & Sarpras';
+
+            // Sort descending untuk timeline (yang terbaru di atas)
+            const timelineData = [...group.history].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            const html = timelineData.map((r, i) => {
+                const isLatest = i === 0;
+                const isBg = group.kategori === 'bangunan';
+                let tagColor = 'slate';
+                let tagText = '';
+
+                if (isBg) {
+                    tagColor = r.kondisi === 'Rusak Berat' ? 'red' : (r.kondisi === 'Aman' ? 'emerald' : 'amber');
+                    tagText = r.kondisi;
+                } else {
+                    const rsk = parseInt(r.qtyRusak) || 0;
+                    const bk = parseInt(r.qtyBaik) || 0;
+                    tagColor = rsk > 0 ? (rsk >= bk ? 'red' : 'amber') : 'emerald';
+                    tagText = `${bk} Baik | ${rsk} Rusak`;
+                }
+
+                const dateStr = new Date(r.timestamp).toLocaleDateString('id-ID', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+                const timeStr = new Date(r.timestamp).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+
+                return `
+                <div class="relative pl-6 pb-2">
+                    <!-- Titik Timeline -->
+                    <div class="absolute -left-2 top-0.5 w-4 h-4 rounded-full border-4 border-white ${isLatest ? 'bg-blue-600 shadow-md scale-125' : 'bg-slate-300'}"></div>
+                    
+                    <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl mb-4 ${isLatest ? 'border-l-4 border-l-blue-500 shadow-sm' : ''}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">${dateStr}</p>
+                                <p class="text-xs text-slate-400 font-medium">${timeStr} WIB</p>
+                            </div>
+                            <span class="text-[10px] font-bold bg-${tagColor}-100 text-${tagColor}-700 px-2 py-1 rounded">${tagText}</span>
+                        </div>
+                        <p class="text-sm text-slate-700 leading-relaxed italic border-l-2 border-slate-200 pl-3">"${r.catatan}"</p>
+                        ${r.foto ? `
+                        <div class="mt-3 bg-white p-1 rounded-lg border border-slate-200 max-w-[150px]">
+                            <img src="${r.foto}" class="w-full rounded bg-slate-100 object-cover aspect-square">
+                        </div>` : ''}
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            document.getElementById('hist-timeline').innerHTML = html;
+            
+            // Tampilkan Modal
+            document.getElementById('modal-historis').classList.remove('hidden');
+            document.getElementById('modal-historis').classList.add('flex');
+            // Sedikit delay untuk animasi opacity
+            setTimeout(() => {
+                document.getElementById('modal-historis').classList.add('opacity-100');
+            }, 10);
+        }
+
+        function closeHistoris() {
+            document.getElementById('modal-historis').classList.add('hidden');
+            document.getElementById('modal-historis').classList.remove('flex');
+        }
+
+        // --- FORM LOGIC & MENTAHAN ---
+        function handleFormKategori() {
+            const kat = document.getElementById('form-kategori').value;
+            const lObjek = document.getElementById('label-objek');
+            const cBangunan = document.getElementById('container-kondisi-bangunan');
+            const cAset = document.getElementById('container-kuantitas-aset');
+            const cMap = document.getElementById('container-map-bangunan');
+
+            if (kat === 'bangunan') {
+                lObjek.innerText = 'Nama Gedung / Ruangan';
+                cBangunan.classList.remove('hidden');
+                cMap.classList.remove('hidden');
+                cAset.classList.add('hidden');
+            } else {
+                lObjek.innerText = 'Nama Barang / Inventaris';
+                cBangunan.classList.add('hidden');
+                cMap.classList.add('hidden');
+                cAset.classList.remove('hidden');
+                cAset.classList.add('grid');
+            }
+        }
+
+        function toggleFormInspeksi(show) {
+            document.getElementById('inspeksi-list').classList.toggle('hidden', show);
+            document.getElementById('inspeksi-form').classList.toggle('hidden', !show);
+            
+            if(show && editingId === null) {
+                // Pastikan jika bukan "Update", form terbuka fresh (Unlock)
+                document.getElementById('form-title-head').innerText = "Form Inspeksi Baru";
+                document.getElementById('form-subtitle-head').innerText = "Catat objek baru di lapangan.";
+                
+                const elKategori = document.getElementById('form-kategori');
+                elKategori.disabled = false;
+                
+                const elObjek = document.getElementById('form-objek');
+                elObjek.readOnly = false;
+                document.getElementById('hint-objek').classList.add('hidden');
+
+                // Reset Values
+                elObjek.value = '';
+                document.getElementById('form-catatan').value = '';
+                document.getElementById('form-qty-baik').value = '';
+                document.getElementById('form-qty-rusak').value = '';
+                document.getElementById('form-map-status').innerText = 'Gunakan jika area belum digambar';
+                currentGeoJSON = null;
+                if(drawnItems) drawnItems.clearLayers();
+                removePhoto();
+                handleFormKategori();
+            }
+        }
+
+        // LEAFLET MAP
+        function initMap() {
+            if (map) { map.invalidateSize(); return; }
+            map = L.map('map-container', {zoomControl: false}).setView([-2.5489, 118.0148], 5);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+
+            drawnItems = new L.FeatureGroup().addTo(map);
+            const drawControl = new L.Control.Draw({
+                edit: { featureGroup: drawnItems },
+                draw: { polygon: { shapeOptions: { color: '#ef4444' } }, polyline: false, rectangle: true, circle: false, marker: false, circlemarker: false }
+            });
+            map.addControl(drawControl);
+            map.locate({setView: true, maxZoom: 18});
+
+            map.on(L.Draw.Event.CREATED, function (e) {
+                drawnItems.clearLayers();
+                drawnItems.addLayer(e.layer);
+                currentGeoJSON = e.layer.toGeoJSON();
+                document.getElementById('form-map-status').innerText = 'Area Terpetakan (Update)';
+                document.getElementById('form-map-status').className = 'text-xs text-emerald-600 font-bold';
+            });
+        }
+
+        function openMap() {
+            document.getElementById('map-wrapper').classList.remove('hidden');
+            document.getElementById('map-wrapper').classList.add('flex');
+            setTimeout(() => { initMap(); map.invalidateSize(); }, 200);
+        }
+
+        function closeMap() {
+            document.querySelectorAll('.leaflet-draw-actions a').forEach(a => {
+                if(a.title.includes('Finish') || a.title.includes('Save')) a.click();
+            });
+            document.getElementById('map-wrapper').classList.add('hidden');
+            document.getElementById('map-wrapper').classList.remove('flex');
+        }
+
+        // SAVE DATA LOKAL (CRUD untuk Raw Log)
+        function saveInspeksi(e) {
+            e.preventDefault();
+            const kat = document.getElementById('form-kategori').value;
+            const newData = {
+                id: editingId || Date.now(), // Jika editingId ada, overwrite log tsb. Jika null (baru/update), bikin ID baru.
+                timestamp: editingId ? reports.find(r=>r.id===editingId).timestamp : new Date().toISOString(),
+                kategori: kat,
+                objek: document.getElementById('form-objek').value,
+                catatan: document.getElementById('form-catatan').value,
+                foto: document.getElementById('form-photo-base64').value
+            };
+
+            if(kat === 'bangunan') {
+                newData.kondisi = document.getElementById('form-kondisi').value;
+                newData.geojson = currentGeoJSON;
+                if(!newData.foto && !editingId) return alert("Wajib melampirkan foto untuk inspeksi struktur bangunan!");
+            } else {
+                newData.qtyBaik = document.getElementById('form-qty-baik').value;
+                newData.qtyRusak = document.getElementById('form-qty-rusak').value;
+            }
+
+            if (editingId) {
+                // Benar-benar edit log mentahan yang typo (bukan re-post timeline)
+                const idx = reports.findIndex(r => r.id === editingId);
+                reports[idx] = newData;
+            } else {
+                // Post Baru (Entah objek baru, atau update timeline objek lama)
+                reports.unshift(newData);
+            }
+
+            localStorage.setItem('sekolah_reports', JSON.stringify(reports));
+            toggleFormInspeksi(false);
+            editingId = null; // bersihkan
+            
+            // Kalau dia nge-update dari view pemantauan, pas nyimpen balik ke pemantauan
+            const isUpdateFlow = document.getElementById('form-objek').readOnly === true;
+            if (isUpdateFlow) {
+                switchTab('pemantauan');
+            } else {
+                renderReports();
+                updateDashboard();
+            }
+        }
+
+        function deleteReportRaw(id) {
+            if(confirm("YAKIN HAPUS LOG INI?\nMenghapus log akan mengubah riwayat historis objek tersebut secara permanen.")) {
+                reports = reports.filter(r => r.id !== id);
+                localStorage.setItem('sekolah_reports', JSON.stringify(reports));
+                renderReports(); updateDashboard();
+            }
+        }
+
+        // RENDER LIST MENTAHAN (DI TAB INSPEKSI)
+        function renderReports() {
+            const container = document.getElementById('inspeksi-container');
+            
+            if (reports.length === 0) {
+                container.innerHTML = `<div class="text-center p-8 border border-dashed rounded-xl"><p class="text-slate-400 font-bold">Belum ada inspeksi.</p></div>`;
+                return;
+            }
+
+            const html = reports.map(r => {
+                const isBg = r.kategori === 'bangunan';
+                const icon = isBg ? 'ph-buildings' : 'ph-package';
+                const clr = isBg ? (r.kondisi==='Rusak Berat'?'red':(r.kondisi==='Aman'?'emerald':'amber')) : 'blue';
+                const tag = isBg ? r.kondisi : `${r.qtyBaik || 0} Baik | ${r.qtyRusak || 0} Rusak`;
+
+                return `
+                <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col gap-3">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-${clr}-100 text-${clr}-600 rounded-lg"><i class="ph-fill ${icon} text-xl"></i></div>
+                            <div>
+                                <h3 class="font-bold text-slate-800">${r.objek}</h3>
+                                <p class="text-[10px] text-slate-500">${new Date(r.timestamp).toLocaleString('id-ID')}</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold bg-${clr}-50 text-${clr}-700 border border-${clr}-200 px-2 py-1 rounded-md">${tag}</span>
+                    </div>
+                    <p class="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg line-clamp-2">${r.catatan}</p>
+                    <div class="flex justify-end gap-2 border-t border-slate-100 pt-2 mt-1">
+                        <button onclick="editReportRaw(${r.id})" class="text-blue-400 hover:text-blue-600 text-xs font-bold"><i class="ph-bold ph-pencil-simple"></i> Edit Typo</button>
+                        <button onclick="deleteReportRaw(${r.id})" class="text-red-400 hover:text-red-600 text-xs font-bold"><i class="ph-bold ph-trash"></i> Hapus Log</button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function editReportRaw(id) {
+            const r = reports.find(x => x.id === id);
+            if(!r) return;
+            
+            editingId = id; // Set ID
+            
+            document.getElementById('inspeksi-list').classList.add('hidden');
+            document.getElementById('inspeksi-form').classList.remove('hidden');
+            
+            document.getElementById('form-title-head').innerText = "Edit Typo Laporan Mentah";
+            document.getElementById('form-subtitle-head').innerText = "Hanya gunakan untuk memperbaiki kesalahan ketik.";
+
+            // Bebaskan form
+            const elKat = document.getElementById('form-kategori');
+            elKat.disabled = false;
+            elKat.value = r.kategori;
+            handleFormKategori();
+
+            const elObjek = document.getElementById('form-objek');
+            elObjek.readOnly = false;
+            elObjek.value = r.objek;
+            document.getElementById('hint-objek').classList.add('hidden');
+
+            document.getElementById('form-catatan').value = r.catatan || '';
+            document.getElementById('form-photo-base64').value = r.foto || '';
+
+            if(r.kategori === 'bangunan') {
+                document.getElementById('form-kondisi').value = r.kondisi;
+                currentGeoJSON = r.geojson;
+                document.getElementById('form-map-status').innerText = r.geojson ? 'Peta Lama Tersimpan' : 'Peta Belum Ada';
+            } else {
+                document.getElementById('form-qty-baik').value = r.qtyBaik;
+                document.getElementById('form-qty-rusak').value = r.qtyRusak;
+            }
+
+            if(r.foto) {
+                document.getElementById('photo-preview').src = r.foto;
+                document.getElementById('photo-preview-container').classList.remove('hidden');
+                document.getElementById('photo-input-container').classList.add('hidden');
+            } else {
+                removePhoto();
+            }
+        }
+
+        // UPDATE DASHBOARD METRICS
+        function updateDashboard() {
+            const groups = getGroupedObjects(); // Menggunakan grouping untuk metrik cerdas
+            
+            document.getElementById('dash-total-lap').innerText = reports.length; // Total log mentah
+            document.getElementById('dash-total-objek').innerText = groups.length; // Total objek unik
+            
+            // Hitung kondisi Kritis (Hanya dari status TERAKHIR setiap grup)
+            const kritis = groups.filter(g => g.kategori === 'bangunan' && g.history[g.history.length-1].kondisi === 'Rusak Berat').length;
+            document.getElementById('dash-total-kritis').innerText = kritis;
+            
+            document.getElementById('dash-total-sync').innerText = reports.length; 
+        }
+
+        // --- GOOGLE FORM SYNC ---
+        function openSyncModal() {
+            if(reports.length === 0) return alert("Tidak ada data untuk disinkronisasi!");
+            document.getElementById('sync-amount').innerText = reports.length;
+            document.getElementById('modal-sync').classList.remove('hidden');
+            document.getElementById('modal-sync').classList.add('flex');
+            document.getElementById('sync-feedback').className = 'hidden';
+        }
+        function closeSyncModal() {
+            document.getElementById('modal-sync').classList.add('hidden');
+            document.getElementById('modal-sync').classList.remove('flex');
+        }
+
+        async function executeSync() {
+            const url = document.getElementById('sync-url').value;
+            const fb = document.getElementById('sync-feedback');
+            const btn = document.getElementById('btn-do-sync');
+
+            if(!url.includes('formResponse')) {
+                fb.innerText = "❌ URL tidak valid. Pastikan berakhiran /formResponse";
+                fb.className = 'text-xs text-center font-bold text-red-500 mt-2 block'; return;
+            }
+
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Mengirim...'; btn.disabled = true;
+
+            try {
+                const payloadSafe = reports.map(r => { const rCopy = {...r}; delete rCopy.foto; return rCopy; });
+                const formData = new URLSearchParams();
+                
+                formData.append('entry.111111', schoolInfo.nama);
+                formData.append('entry.222222', schoolInfo.npsn);
+                formData.append('entry.333333', schoolInfo.inspektur);
+                formData.append('entry.444444', JSON.stringify(payloadSafe));
+
+                await fetch(url, {
+                    method: 'POST', mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData
+                });
+
+                fb.innerText = "✅ Data berhasil dikirim (Fire & Forget)!";
+                fb.className = 'text-xs text-center font-bold text-emerald-600 mt-2 block';
+                
+                if(confirm("Data sukses dikirim ke Google Form. Hapus riwayat lokal di HP ini?")) {
+                    reports = []; localStorage.setItem('sekolah_reports', JSON.stringify([]));
+                    renderReports(); renderPemantauan(); updateDashboard();
+                }
+            } catch (err) {
+                fb.innerText = "❌ Gagal: Cek koneksi internet / URL Gform Anda.";
+                fb.className = 'text-xs text-center font-bold text-red-500 mt-2 block';
+            }
+            btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Kirim Sekarang'; btn.disabled = false;
+        }
+
+        // TRIASE KALKULATOR
+        function hitungRisiko() {
+            let skor = 0;
+            document.querySelectorAll('.risk-check:checked').forEach(el => { skor += parseInt(el.value); });
+            const resDiv = document.getElementById('risk-result');
+            resDiv.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-700', 'bg-amber-50', 'border-amber-200', 'text-amber-700', 'bg-red-50', 'border-red-200', 'text-red-700');
+            if (skor === 0) {
+                resDiv.classList.add('bg-emerald-50', 'border-emerald-200');
+                document.getElementById('risk-title').className = 'text-3xl font-black mb-2 text-emerald-600';
+                document.getElementById('risk-title').innerText = "AMAN";
+                document.getElementById('risk-desc').innerText = "Gedung tidak menunjukkan gejala kritis struktural.";
+            } else if (skor <= 30) {
+                resDiv.classList.add('bg-amber-50', 'border-amber-200');
+                document.getElementById('risk-title').className = 'text-3xl font-black mb-2 text-amber-600';
+                document.getElementById('risk-title').innerText = "WASPADA";
+                document.getElementById('risk-desc').innerText = "Perlu perbaikan segera. Batasi aktivitas saat cuaca buruk.";
+            } else {
+                resDiv.classList.add('bg-red-50', 'border-red-200');
+                document.getElementById('risk-title').className = 'text-3xl font-black mb-2 text-red-600 animate-pulse';
+                document.getElementById('risk-title').innerText = "BAHAYA RUBUH!";
+                document.getElementById('risk-desc').innerText = "KOSONGKAN RUANGAN! Laporkan segera ke Dinas Pendidikan.";
+            }
+        }
+    </script>
+</body>
+</html>
