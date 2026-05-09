@@ -361,9 +361,10 @@
 
                         for (let key in row) {
                             const kLow = key.toLowerCase();
+                            // Pencegahan tertukarnya kolom: pastikan kolom inspektur tidak tertimpa nama sekolah
                             if (kLow.includes("sekolah") && !kLow.includes("npsn") && !kLow.includes("kode")) namaSekolah = row[key];
                             if (kLow.includes("npsn") || kLow.includes("kode")) npsn = row[key];
-                            if (kLow.includes("inspektur") || kLow.includes("nama")) inspektur = row[key];
+                            if ((kLow.includes("inspektur") || kLow.includes("nama")) && !kLow.includes("sekolah")) inspektur = row[key];
                         }
 
                         payloads.forEach(item => {
@@ -447,10 +448,10 @@
             const selectAuditor = document.getElementById('filter-auditor');
             const selectJenis = document.getElementById('filter-jenis');
             
-            // Populating NPSN
+            // Populating NPSN (Sekarang hanya nama sekolah saja)
             let optionsNPSN = '<option value="ALL">Semua Sekolah (Agregat)</option>';
             Object.values(groupedData).forEach(sekolah => {
-                optionsNPSN += `<option value="${sekolah.npsn}">${sekolah.npsn} - ${sekolah.namaSekolah}</option>`;
+                optionsNPSN += `<option value="${sekolah.npsn}">${sekolah.namaSekolah}</option>`;
             });
             selectGlobal.innerHTML = optionsNPSN;
             selectSarpras.innerHTML = optionsNPSN;
@@ -503,7 +504,7 @@
                 totalObjek += sekolahObjekCount;
 
                 if(sekolahObjekCount > 0) {
-                    listHTML += `<div class="mb-4 mt-6 first:mt-0"><h4 class="text-sm font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-1 mb-3">${sekolah.npsn} - ${sekolah.namaSekolah}</h4>`;
+                    listHTML += `<div class="mb-4 mt-6 first:mt-0"><h4 class="text-sm font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-1 mb-3">${sekolah.namaSekolah}</h4>`;
                 }
 
                 Object.values(sekolah.objek).forEach(obj => {
@@ -601,7 +602,7 @@
 
             document.getElementById('tl-kategori').innerText = isBg ? 'Struktur Gedung' : 'Aset & Sarpras';
             document.getElementById('tl-objek-nama').innerText = obj.originalName;
-            document.getElementById('tl-sekolah-nama').innerText = `${sekolah.namaSekolah} (NPSN: ${npsn})`;
+            document.getElementById('tl-sekolah-nama').innerText = `${sekolah.namaSekolah}`;
             document.getElementById('tl-objek-nama-mobile').innerText = obj.originalName;
             document.getElementById('tl-sekolah-nama-mobile').innerText = sekolah.namaSekolah;
 
@@ -749,7 +750,7 @@
                         </div>
                         <div class="min-w-0 flex-1">
                             <h3 class="font-bold text-lg text-slate-800 truncate" title="${obj.namaObjek}">${obj.namaObjek}</h3>
-                            <p class="text-xs text-slate-500 truncate" title="${obj.namaSekolah}"><i class="ph-bold ph-graduation-cap text-slate-400"></i> ${obj.namaSekolah} (${obj.npsn}) | <i class="ph-bold ph-user text-slate-400"></i> ${obj.inspektur}</p>
+                            <p class="text-xs text-slate-500 truncate" title="${obj.namaSekolah}"><i class="ph-bold ph-graduation-cap text-slate-400"></i> ${obj.namaSekolah} | <i class="ph-bold ph-user text-slate-400"></i> ${obj.inspektur}</p>
                         </div>
                     </div>
 
