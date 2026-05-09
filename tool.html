@@ -1180,40 +1180,59 @@
             const fb = document.getElementById('sync-feedback');
             const btn = document.getElementById('btn-do-sync');
 
+            // Validasi sederhana URL
             if(!url.includes('formResponse')) {
-                fb.innerText = "❌ URL tidak valid. Pastikan berakhiran /formResponse";
-                fb.className = 'text-xs text-center font-bold text-red-500 mt-2 block'; return;
+                fb.innerText = "❌ URL tidak valid. Gunakan link 'formResponse'.";
+                fb.className = 'text-xs text-center font-bold text-red-500 mt-2 block'; 
+                return;
             }
 
-            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Mengirim...'; btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Menghubungkan API...'; 
+            btn.disabled = true;
 
             try {
-                const payloadSafe = reports.map(r => { const rCopy = {...r}; delete rCopy.foto; return rCopy; });
-                const formData = new URLSearchParams();
-                
-                formData.append('entry.111111', schoolInfo.nama);
-                formData.append('entry.222222', schoolInfo.npsn);
-                formData.append('entry.333333', schoolInfo.inspektur);
-                formData.append('entry.444444', JSON.stringify(payloadSafe));
+                // Payload tanpa foto (Data teknis & koordinat saja agar ringan)
+                const payloadSafe = reports.map(r => { 
+                    const rCopy = {...r}; 
+                    delete rCopy.foto; 
+                    return rCopy; 
+                });
 
+                const formData = new URLSearchParams();
+                // ID Entry sesuai form yang Anda berikan
+                formData.append('entry.1347795599', schoolInfo.nama);
+                formData.append('entry.1547462533', schoolInfo.npsn);
+                formData.append('entry.1695999318', schoolInfo.inspektur);
+                formData.append('entry.954651730', "Data Terenkapsulasi");
+                formData.append('entry.598227848', JSON.stringify(payloadSafe));
+
+                // Pengiriman ke Google Form API
                 await fetch(url, {
-                    method: 'POST', mode: 'no-cors',
+                    method: 'POST',
+                    mode: 'no-cors', 
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: formData
                 });
 
-                fb.innerText = "✅ Data berhasil dikirim (Fire & Forget)!";
+                // Tampilkan pesan sukses
+                fb.innerText = "✅ Data Berhasil Masuk ke Database!";
                 fb.className = 'text-xs text-center font-bold text-emerald-600 mt-2 block';
                 
-                if(confirm("Data sukses dikirim ke Google Form. Hapus riwayat lokal di HP ini?")) {
-                    reports = []; localStorage.setItem('sekolah_reports', JSON.stringify([]));
-                    renderReports(); renderPemantauan(); updateDashboard();
-                }
+                // Tutup modal secara otomatis setelah 2 detik tanpa menghapus apapun
+                setTimeout(() => {
+                    closeSyncModal();
+                    // Kembalikan tampilan tombol & pesan ke awal untuk pengiriman berikutnya
+                    fb.innerText = "";
+                    fb.className = "hidden";
+                }, 2000);
+
             } catch (err) {
-                fb.innerText = "❌ Gagal: Cek koneksi internet / URL Gform Anda.";
+                fb.innerText = "❌ Gagal Terhubung ke API.";
                 fb.className = 'text-xs text-center font-bold text-red-500 mt-2 block';
+            } finally {
+                btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Kirim Sekarang'; 
+                btn.disabled = false;
             }
-            btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Kirim Sekarang'; btn.disabled = false;
         }
 
         // --- MANAJEMEN DATA OFFLINE (JSON EXPORT/IMPORT/RESET) ---
@@ -1287,101 +1306,112 @@
         }
 
         // --- CETAK LAPORAN (PDF) MENGGUNAKAN HTML2PDF ---
-        function generatePDF() {
-            if (reports.length === 0) return alert("Belum ada data untuk dicetak!");
+function generatePDF() {
+    if (reports.length === 0) return alert("Belum ada data untuk dicetak!");
 
-            const btn = document.getElementById('btn-print-pdf');
-            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Menyiapkan Laporan...';
+    const btn = document.getElementById('btn-print-pdf');
+    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Menyiapkan Laporan...';
+
+    try {
+        // Membuat wadah rahasia/sementara untuk dirender ke PDF
+        const container = document.createElement('div');
+        container.className = 'p-8 bg-white text-slate-800 font-sans';
+        container.style.width = '800px';
+
+        const d = new Date().toLocaleDateString('id-ID', {weekday: 'long', day:'numeric', month:'long', year:'numeric'});
+
+        let tableRows = '';
+        const groups = getGroupedObjects();
+        
+        groups.forEach((g, idx) => {
+            const last = g.history[g.history.length-1]; 
             
-            // Membuat wadah rahasia/sementara untuk dirender ke PDF
-            const container = document.createElement('div');
-            container.className = 'p-8 bg-white text-slate-800 font-sans';
-            // Set ukuran lebar baku (layout akan A4 portrait otomatis via html2pdf)
-            container.style.width = '800px';
-
-            const d = new Date().toLocaleDateString('id-ID', {weekday: 'long', day:'numeric', month:'long', year:'numeric'});
-
-            let tableRows = '';
-            const groups = getGroupedObjects();
+            let status = '';
+            let statusClr = '';
             
-            groups.forEach((g, idx) => {
-                // Dalam grouping, indeks terakhir [length-1] adalah histori terbaru
-                const last = g.history[g.history.length-1]; 
-                
-                let status = '';
-                let statusClr = '';
-                
-                if (g.kategori === 'bangunan') {
-                    status = last.kondisi;
-                    statusClr = (status === 'Rusak Berat' ? 'color: #ef4444;' : (status === 'Aman' ? 'color: #10b981;' : 'color: #f59e0b;'));
-                } else {
-                    status = `${last.qtyBaik} Baik, ${last.qtyRusak} Rusak`;
-                    statusClr = (last.qtyRusak > 0 ? 'color: #ef4444;' : 'color: #10b981;');
-                }
+            if (g.kategori === 'bangunan') {
+                status = last.kondisi;
+                statusClr = (status === 'Rusak Berat' ? 'color: #ef4444;' : (status === 'Aman' ? 'color: #10b981;' : 'color: #f59e0b;'));
+            } else {
+                status = `${last.qtyBaik} Baik, ${last.qtyRusak} Rusak`;
+                statusClr = (last.qtyRusak > 0 ? 'color: #ef4444;' : 'color: #10b981;');
+            }
 
-                tableRows += `
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 12px 8px; font-size: 14px;">${idx+1}</td>
-                    <td style="padding: 12px 8px; font-size: 14px; font-weight: bold;">${g.originalName}</td>
-                    <td style="padding: 12px 8px; font-size: 14px; text-transform: capitalize;">${g.kategori}</td>
-                    <td style="padding: 12px 8px; font-size: 14px; font-weight: bold; ${statusClr}">${status}</td>
-                    <td style="padding: 12px 8px; font-size: 12px; color: #64748b;">${new Date(last.timestamp).toLocaleDateString('id-ID')}</td>
-                </tr>`;
-            });
+            tableRows += `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 12px 8px; font-size: 14px;">${idx+1}</td>
+                <td style="padding: 12px 8px; font-size: 14px; font-weight: bold;">${g.originalName}</td>
+                <td style="padding: 12px 8px; font-size: 14px; text-transform: capitalize;">${g.kategori}</td>
+                <td style="padding: 12px 8px; font-size: 14px; font-weight: bold; ${statusClr}">${status}</td>
+                <td style="padding: 12px 8px; font-size: 12px; color: #64748b;">${new Date(last.timestamp).toLocaleDateString('id-ID')}</td>
+            </tr>`;
+        });
 
-            // Menyusun kerangka HTML yang akan diconvert
-            container.innerHTML = `
-                <div style="border-bottom: 4px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
-                        <h1 style="font-size: 28px; font-weight: 900; margin: 0; color: #1e293b; letter-spacing: -0.5px;">LAPORAN INSPEKSI DRR & SARPRAS</h1>
-                        <h2 style="font-size: 20px; font-weight: 700; margin: 5px 0 0 0; color: #475569;">${schoolInfo.nama}</h2>
-                        <p style="font-size: 14px; margin: 5px 0 0 0; color: #64748b;">NPSN: <strong>${schoolInfo.npsn}</strong> | Inspektur: <strong>${schoolInfo.inspektur}</strong></p>
-                    </div>
-                    <div style="text-align: right;">
-                        <p style="font-size: 12px; font-weight: bold; margin: 0; color: #1e293b; text-transform: uppercase;">Tanggal Cetak Laporan</p>
-                        <p style="font-size: 14px; margin: 2px 0 0 0; color: #64748b;">${d}</p>
-                    </div>
+        // Menyusun kerangka HTML yang akan diconvert
+        container.innerHTML = `
+            <div style="border-bottom: 4px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 style="font-size: 28px; font-weight: 900; margin: 0; color: #1e293b; letter-spacing: -0.5px;">LAPORAN INSPEKSI DRR & SARPRAS</h1>
+                    <h2 style="font-size: 20px; font-weight: 700; margin: 5px 0 0 0; color: #475569;">${schoolInfo.nama}</h2>
+                    <p style="font-size: 14px; margin: 5px 0 0 0; color: #64748b;">NPSN: <strong>${schoolInfo.npsn}</strong> | Inspektur: <strong>${schoolInfo.inspektur}</strong></p>
                 </div>
-
-                <div style="margin-bottom: 20px;">
-                    <h3 style="font-size: 16px; font-weight: bold; margin: 0 0 15px 0; background-color: #f1f5f9; padding: 10px; border-radius: 6px;">Ringkasan Status Kondisi Terkini</h3>
-                    <table style="width: 100%; text-align: left; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background-color: #1e293b; color: white;">
-                                <th style="padding: 10px 8px; font-size: 14px;">No</th>
-                                <th style="padding: 10px 8px; font-size: 14px;">Nama Objek</th>
-                                <th style="padding: 10px 8px; font-size: 14px;">Kategori</th>
-                                <th style="padding: 10px 8px; font-size: 14px;">Status / Kondisi</th>
-                                <th style="padding: 10px 8px; font-size: 14px;">Update Terakhir</th>
-                            </tr>
-                        </thead>
-                        <tbody>${tableRows}</tbody>
-                    </table>
+                <div style="text-align: right;">
+                    <p style="font-size: 12px; font-weight: bold; margin: 0; color: #1e293b; text-transform: uppercase;">Tanggal Cetak Laporan</p>
+                    <p style="font-size: 14px; margin: 2px 0 0 0; color: #64748b;">${d}</p>
                 </div>
+            </div>
 
-                <div style="margin-top: 50px; padding-top: 20px; border-top: 1px dashed #cbd5e1; text-align: center;">
-                    <p style="font-size: 12px; font-weight: bold; color: #1e293b; margin: 0;">Disusun dan di-generate otomatis oleh Sistem "SekolahAman"</p>
-                    <p style="font-size: 10px; color: #94a3b8; margin: 5px 0 0 0;">Dokumen ini merupakan hasil inspeksi lapangan resmi.</p>
-                </div>
-            `;
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 16px; font-weight: bold; margin: 0 0 15px 0; background-color: #f1f5f9; padding: 10px; border-radius: 6px;">Ringkasan Status Kondisi Terkini</h3>
+                <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #1e293b; color: white;">
+                            <th style="padding: 10px 8px; font-size: 14px;">No</th>
+                            <th style="padding: 10px 8px; font-size: 14px;">Nama Objek</th>
+                            <th style="padding: 10px 8px; font-size: 14px;">Kategori</th>
+                            <th style="padding: 10px 8px; font-size: 14px;">Status / Kondisi</th>
+                            <th style="padding: 10px 8px; font-size: 14px;">Update Terakhir</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>
+        `;
 
-            const opt = {
-                margin:       [0.5, 0.5, 0.5, 0.5], // Top, Left, Bottom, Right
-                filename:     `Laporan_SekolahAman_${schoolInfo.nama.replace(/\s+/g, '_')}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
+        const opt = {
+            margin:       [0.5, 0.5, 0.5, 0.5],
+            filename:     `Laporan_SekolahAman_${schoolInfo.nama.replace(/\s+/g, '_')}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
 
-            // Proses generate
+        // SAFETY: Jika setelah 8 detik PDF gagal merender, kembalikan tombol secara paksa
+        const fallbackTimeout = setTimeout(() => {
+            btn.innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
+        }, 8000);
+
+        // Proses generate
+        if(typeof html2pdf !== 'undefined') {
             html2pdf().set(opt).from(container).save().then(() => {
-                // Kembalikan tombol seperti semula
+                clearTimeout(fallbackTimeout);
                 btn.innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
             }).catch(err => {
-                alert("Gagal mencetak laporan PDF. Pastikan internet Anda aktif karena membutuhkan library renderer.");
+                clearTimeout(fallbackTimeout);
+                console.error(err);
+                alert("Gagal mencetak laporan PDF. Coba kembali beberapa saat lagi.");
                 btn.innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
             });
+        } else {
+            throw new Error("Library html2pdf belum dimuat.");
         }
+
+    } catch (error) {
+        console.error(error);
+        alert("Sistem PDF belum siap karena koneksi terputus. Muat ulang halaman.");
+        btn.innerHTML = '<i class="ph-bold ph-printer text-xl"></i> Cetak Laporan (PDF)';
+    }
+}
 
         // --- LOAD SAMPLE DATA DENGAN PETA (UNTUK TESTING) ---
         function loadSampleData() {
