@@ -207,21 +207,21 @@
                         <div class="flex justify-between items-center">
                             <div>
                                 <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-map-trifold text-blue-600"></i> Peta Persebaran Sekolah</h2>
-                                <p class="text-xs text-slate-500 mt-1">Menggabungkan kondisi terbaru setiap gedung dalam satu citra satelit.</p>
+                                <p class="text-xs text-slate-500 mt-1">Menggabungkan kondisi terbaru setiap gedung & sarpras dalam satu citra satelit.</p>
                             </div>
                         </div>
                     </div>
                     
                     <div class="flex-1 bg-slate-200 rounded-2xl overflow-hidden relative border border-slate-300 shadow-inner min-h-[500px]">
-                        <div id="school-main-map" class="absolute inset-0 z-0"></div>
+                        <div id="school-main-map" class="absolute inset-0 z-0 h-full w-full"></div>
                         
                         <!-- Legenda -->
                         <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg z-[15] text-[10px] font-bold border border-slate-200">
-                            <p class="mb-2 text-slate-600 uppercase">Kondisi Bangunan</p>
-                            <div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 bg-[#10b981] opacity-70 border border-[#047857]"></div> Aman</div>
-                            <div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 bg-[#f59e0b] opacity-70 border border-[#b45309]"></div> Rusak Ringan</div>
-                            <div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 bg-[#f97316] opacity-70 border border-[#c2410c]"></div> Rusak Sedang</div>
-                            <div class="flex items-center gap-2"><div class="w-4 h-4 bg-[#ef4444] opacity-70 border border-[#b91c1c]"></div> Rusak Berat</div>
+                            <p class="mb-2 text-slate-600 uppercase border-b pb-1">Kondisi Bangunan / Aset</p>
+                            <div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 bg-[#10b981] opacity-70 border border-[#047857] rounded-sm"></div> Aman / Baik</div>
+                            <div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 bg-[#f59e0b] opacity-70 border border-[#b45309] rounded-sm"></div> Rusak Ringan / Sebagian</div>
+                            <div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 bg-[#f97316] opacity-70 border border-[#c2410c] rounded-sm"></div> Rusak Sedang</div>
+                            <div class="flex items-center gap-2"><div class="w-4 h-4 bg-[#ef4444] opacity-70 border border-[#b91c1c] rounded-sm"></div> Rusak Berat / Total</div>
                         </div>
                     </div>
                 </section>
@@ -312,21 +312,25 @@
                                 <textarea id="form-catatan" placeholder="Jelaskan apa yang berubah sejak inspeksi sebelumnya..." class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 h-24 text-sm" required></textarea>
                             </div>
 
-                            <!-- Map Area -->
+                            <!-- Map Area (Kini Tersedia untuk Keduanya) -->
                             <div id="container-map-bangunan" class="bg-blue-50 p-4 rounded-xl border border-blue-100">
                                 <div class="flex justify-between items-center mb-2">
-                                    <span class="text-sm font-bold text-blue-800 flex items-center gap-2"><i class="ph-fill ph-map-trifold"></i> Tandai Ulang Area (Opsional)</span>
+                                    <span class="text-sm font-bold text-blue-800 flex items-center gap-2" id="label-map-form"><i class="ph-fill ph-map-trifold"></i> Tandai GIS Area/Lokasi</span>
                                     <button type="button" onclick="openMap()" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm">Buka Peta</button>
                                 </div>
-                                <p id="form-map-status" class="text-xs text-blue-600 font-medium">Gunakan jika area kerusakan meluas.</p>
+                                <p id="form-map-status" class="text-xs text-blue-600 font-medium">Opsional: Gunakan untuk memperbarui koordinat.</p>
                                 <input type="hidden" id="form-geojson">
                             </div>
 
                             <!-- Map Wrapper -->
                             <div id="map-wrapper" class="hidden bg-white flex-col transition-all mb-4 fixed inset-0 z-[100]">
-                                <div class="p-3 bg-slate-800 text-white flex justify-between items-center z-10">
-                                    <h3 class="font-bold flex items-center gap-2"><i class="ph-bold ph-map-pin"></i> Area Terdampak Baru</h3>
-                                    <button type="button" onclick="closeMap()" class="font-bold text-slate-900 bg-white px-4 py-1.5 rounded-lg text-sm">Selesai</button>
+                                <div class="p-3 bg-slate-800 text-white flex justify-between items-center z-10 shadow-md">
+                                    <h3 class="font-bold flex items-center gap-2"><i class="ph-bold ph-map-pin"></i> Editor Lokasi Peta</h3>
+                                    <button type="button" onclick="closeMap()" class="font-bold text-slate-900 bg-white px-4 py-1.5 rounded-lg text-sm hover:bg-slate-200 transition">Selesai</button>
+                                </div>
+                                <div class="bg-slate-700 text-white text-[10px] p-2 text-center flex justify-center gap-4">
+                                    <span><i class="ph-bold ph-pencil-simple"></i> Sentuh titik untuk Edit</span>
+                                    <span><i class="ph-bold ph-trash"></i> Sentuh hapus untuk Delete</span>
                                 </div>
                                 <div id="map-container" class="w-full flex-1 relative z-0 bg-slate-200"></div>
                             </div>
@@ -508,14 +512,16 @@
             if(tabId === 'inspeksi') renderReports();
             if(tabId === 'pemantauan') renderPemantauan();
             if(tabId === 'dashboard') updateDashboard();
-            if(tabId === 'peta') setTimeout(renderPetaSekolah, 200);
+            if(tabId === 'peta') {
+                // Beri jeda 300ms agar animasi transisi CSS '.view-section' selesai, 
+                // sehingga Leaflet bisa mengukur dimensi wadah dengan benar dan me-render peta.
+                setTimeout(renderPetaSekolah, 300);
+            }
         }
 
         // --- GROUPING LOGIC (CORE DARI SISTEM HISTORIS) ---
-        // Menggabungkan data berdasarkan nama objek yang sama untuk mencari kondisi terakhir dan riwayatnya.
         function getGroupedObjects() {
             const grouped = {};
-            // Sort ascending dulu agar push history urut dari lama ke baru
             const sortedReports = [...reports].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
             sortedReports.forEach(r => {
@@ -531,7 +537,6 @@
                 grouped[key].history.push(r);
             });
 
-            // Ubah jadi array agar mudah di filter/render, sort berdasarkan update terbaru
             return Object.values(grouped).sort((a, b) => {
                 const latestA = new Date(a.history[a.history.length-1].timestamp);
                 const latestB = new Date(b.history[b.history.length-1].timestamp);
@@ -542,8 +547,8 @@
         // --- TAB PETA PERSEBARAN SEKOLAH (MAIN GIS) ---
         function renderPetaSekolah() {
             if (!mainMap) {
-                // Inisiasi peta jika belum ada.
-                mainMap = L.map('school-main-map', { zoomControl: true }).setView([-6.2625, 106.8850], 17); // Default zoom Halim/Jakarta
+                // Inisiasi peta jika belum ada
+                mainMap = L.map('school-main-map', { zoomControl: true }).setView([-6.2625, 106.8850], 17); // Default zoom Jkt
                 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     maxZoom: 19,
                     attribution: 'Tiles &copy; Esri'
@@ -551,45 +556,67 @@
                 mainMapLayer = new L.FeatureGroup().addTo(mainMap);
             }
 
-            // Bersihkan layer sebelumnya
+            // PENTING: Fix agar peta tidak abu-abu setelah transisi tab
+            mainMap.invalidateSize();
             mainMapLayer.clearLayers();
 
             const groups = getGroupedObjects();
             
-            // Loop khusus objek Bangunan yang memiliki GeoJSON
+            // Render objek berdasarkan riwayat terakhir yang memiliki GeoJSON
             groups.forEach(g => {
-                if (g.kategori === 'bangunan') {
-                    // Ambil riwayat terbaru
-                    const latestReport = g.history[g.history.length - 1];
-                    
-                    if (latestReport.geojson) {
-                        let color = '#10b981'; // Aman (Hijau)
-                        if (latestReport.kondisi === 'Rusak Ringan') color = '#f59e0b'; // Kuning
-                        else if (latestReport.kondisi === 'Rusak Sedang') color = '#f97316'; // Orange
-                        else if (latestReport.kondisi === 'Rusak Berat') color = '#ef4444'; // Merah
+                const latestReport = g.history[g.history.length - 1];
+                
+                if (latestReport.geojson) {
+                    let color = '#10b981'; // Default Aman/Baik (Hijau)
+                    let statusStr = '';
 
-                        const layer = L.geoJSON(latestReport.geojson, {
-                            style: {
-                                color: color,
+                    // Pewarnaan berdasarkan Kategori
+                    if (g.kategori === 'bangunan') {
+                        statusStr = latestReport.kondisi;
+                        if (statusStr === 'Rusak Ringan') color = '#f59e0b';
+                        else if (statusStr === 'Rusak Sedang') color = '#f97316';
+                        else if (statusStr === 'Rusak Berat') color = '#ef4444';
+                    } else {
+                        // Kategori Sarpras
+                        const rsk = parseInt(latestReport.qtyRusak) || 0;
+                        const bk = parseInt(latestReport.qtyBaik) || 0;
+                        statusStr = `${bk} Baik, ${rsk} Rusak`;
+                        if (rsk > 0) color = (rsk >= bk) ? '#ef4444' : '#f59e0b'; // Merah jika rusak dominan, Kuning jika sebagian rusak
+                    }
+
+                    // Tentukan bentuk layer (Polygon vs Marker)
+                    const layer = L.geoJSON(latestReport.geojson, {
+                        style: {
+                            color: color,
+                            weight: 2,
+                            opacity: 1,
+                            fillColor: color,
+                            fillOpacity: 0.5
+                        },
+                        pointToLayer: function (feature, latlng) {
+                            // Jika GeoJSON adalah Titik/Point (seperti untuk Sarpras)
+                            return L.circleMarker(latlng, {
+                                radius: 8,
+                                fillColor: color,
+                                color: '#ffffff',
                                 weight: 2,
                                 opacity: 1,
-                                fillColor: color,
-                                fillOpacity: 0.5
-                            }
-                        });
+                                fillOpacity: 0.9
+                            });
+                        }
+                    });
 
-                        // Tambahkan popup interaktif
-                        const dateStr = new Date(latestReport.timestamp).toLocaleDateString('id-ID');
-                        layer.bindPopup(`
-                            <div class="text-sm">
-                                <strong class="text-slate-800 block mb-1">${g.originalName}</strong>
-                                <span class="bg-slate-100 px-2 py-0.5 rounded text-xs text-slate-600 border border-slate-200">Kondisi: <b>${latestReport.kondisi}</b></span>
-                                <p class="text-[10px] text-slate-400 mt-1 font-medium">Update: ${dateStr}</p>
-                            </div>
-                        `);
+                    // Pop up interaktif
+                    const dateStr = new Date(latestReport.timestamp).toLocaleDateString('id-ID');
+                    layer.bindPopup(`
+                        <div class="text-sm">
+                            <strong class="text-slate-800 block mb-1">${g.originalName}</strong>
+                            <span class="bg-slate-100 px-2 py-0.5 rounded text-xs text-slate-600 border border-slate-200">Kondisi: <b>${statusStr}</b></span>
+                            <p class="text-[10px] text-slate-400 mt-1 font-medium">Update Terakhir: ${dateStr}</p>
+                        </div>
+                    `);
 
-                        mainMapLayer.addLayer(layer);
-                    }
+                    mainMapLayer.addLayer(layer);
                 }
             });
 
@@ -597,12 +624,8 @@
             if (mainMapLayer.getLayers().length > 0) {
                 mainMap.fitBounds(mainMapLayer.getBounds(), { padding: [20, 20], maxZoom: 19 });
             } else {
-                // Jika belum ada data peta sama sekali, coba gunakan geolocation browser jika bisa (opsional)
                 mainMap.setView([-6.2625, 106.8850], 15);
             }
-            
-            // Re-kalkulasi ukuran canvas Leaflet
-            mainMap.invalidateSize();
         }
 
         // --- TAB PEMANTAUAN (VIEW ASET / BANGUNAN) ---
@@ -619,7 +642,7 @@
             }
 
             const html = filteredGroups.map(g => {
-                const latestReport = g.history[g.history.length - 1]; // Array terakhir adalah yang terbaru karena sort ascending saat map
+                const latestReport = g.history[g.history.length - 1]; 
                 const isBg = g.kategori === 'bangunan';
                 const icon = isBg ? 'ph-buildings' : 'ph-package';
                 
@@ -646,6 +669,7 @@
                             <h3 class="font-bold text-lg text-slate-800 leading-tight">${g.originalName}</h3>
                             <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider mb-2">Update Terakhir: ${dateStr}</p>
                             <span class="text-xs font-bold bg-${clr}-50 text-${clr}-700 border border-${clr}-200 px-2.5 py-1 rounded-md inline-block">${tagStr}</span>
+                            ${latestReport.geojson ? `<span class="text-[10px] ml-1 font-bold text-blue-500"><i class="ph-fill ph-map-pin"></i> GPS Terpasang</span>` : ''}
                         </div>
                     </div>
                     
@@ -670,34 +694,35 @@
             document.getElementById('inspeksi-list').classList.add('hidden');
             document.getElementById('inspeksi-form').classList.remove('hidden');
 
-            // Set Form Type Update
             editingId = null; // Memastikan ini post baru (Append)
             document.getElementById('form-title-head').innerText = "Update Kondisi Historis";
             document.getElementById('form-subtitle-head').innerText = `Melaporkan kondisi terkini untuk objek ini.`;
 
-            // Lock Kategori
             const elKategori = document.getElementById('form-kategori');
             elKategori.value = kategori;
-            elKategori.disabled = true; // Lock dropdown
+            elKategori.disabled = true; 
             handleFormKategori();
 
-            // Lock Nama Objek
             const elObjek = document.getElementById('form-objek');
             elObjek.value = nama;
             elObjek.readOnly = true;
             document.getElementById('hint-objek').classList.remove('hidden');
 
-            // Reset sisanya
             document.getElementById('form-catatan').value = '';
             document.getElementById('form-qty-baik').value = '';
             document.getElementById('form-qty-rusak').value = '';
             removePhoto();
             
-            // Opsional: Untuk update bangunan, biarkan default form-geojson = null
-            // Pengguna bisa update peta dengan tekan tombol Peta lagi, jika tidak, kita bisa 
-            // ambil geojson dari riwayat lama saat save (namun sesuai workflow kita, jika berubah, dia harus re-draw).
-            currentGeoJSON = null;
-            document.getElementById('form-map-status').innerText = 'Gunakan jika area kerusakan berubah (meluas/berkurang).';
+            // Tarik GeoJSON lama jika ada, agar bisa diedit atau dipertahankan
+            const groups = getGroupedObjects();
+            const group = groups.find(g => g.originalName === nama);
+            if (group && group.history.length > 0) {
+                currentGeoJSON = group.history[group.history.length - 1].geojson;
+            } else {
+                currentGeoJSON = null;
+            }
+            
+            document.getElementById('form-map-status').innerText = currentGeoJSON ? 'Area/Lokasi Lama Tersimpan (Opsional: Edit)' : 'Opsional: Tandai area/lokasi (GPS) baru.';
             document.getElementById('form-map-status').className = 'text-xs text-blue-600 font-medium';
         }
 
@@ -710,7 +735,6 @@
             document.getElementById('hist-title').innerText = group.originalName;
             document.getElementById('hist-kategori').innerText = group.kategori === 'bangunan' ? 'Kategori: Struktur Gedung' : 'Kategori: Aset & Sarpras';
 
-            // Sort descending untuk timeline (yang terbaru di atas)
             const timelineData = [...group.history].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
             const html = timelineData.map((r, i) => {
@@ -734,9 +758,7 @@
 
                 return `
                 <div class="relative pl-6 pb-2">
-                    <!-- Titik Timeline -->
                     <div class="absolute -left-2 top-0.5 w-4 h-4 rounded-full border-4 border-white ${isLatest ? 'bg-blue-600 shadow-md scale-125' : 'bg-slate-300'}"></div>
-                    
                     <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl mb-4 ${isLatest ? 'border-l-4 border-l-blue-500 shadow-sm' : ''}">
                         <div class="flex justify-between items-start mb-2">
                             <div>
@@ -757,13 +779,9 @@
 
             document.getElementById('hist-timeline').innerHTML = html;
             
-            // Tampilkan Modal
             document.getElementById('modal-historis').classList.remove('hidden');
             document.getElementById('modal-historis').classList.add('flex');
-            // Sedikit delay untuk animasi opacity
-            setTimeout(() => {
-                document.getElementById('modal-historis').classList.add('opacity-100');
-            }, 10);
+            setTimeout(() => { document.getElementById('modal-historis').classList.add('opacity-100'); }, 10);
         }
 
         function closeHistoris() {
@@ -777,19 +795,24 @@
             const lObjek = document.getElementById('label-objek');
             const cBangunan = document.getElementById('container-kondisi-bangunan');
             const cAset = document.getElementById('container-kuantitas-aset');
-            const cMap = document.getElementById('container-map-bangunan');
+            const lMapForm = document.getElementById('label-map-form');
+            const lMapStatus = document.getElementById('form-map-status');
 
             if (kat === 'bangunan') {
                 lObjek.innerText = 'Nama Gedung / Ruangan';
                 cBangunan.classList.remove('hidden');
-                cMap.classList.remove('hidden');
                 cAset.classList.add('hidden');
+                
+                lMapForm.innerHTML = '<i class="ph-fill ph-map-trifold"></i> Tandai Area Gedung (Poligon)';
+                lMapStatus.innerText = currentGeoJSON ? 'Area Tersimpan (Buka Peta untuk Edit)' : 'Opsional: Gambar ulang area jika belum ada.';
             } else {
                 lObjek.innerText = 'Nama Barang / Inventaris';
                 cBangunan.classList.add('hidden');
-                cMap.classList.add('hidden');
                 cAset.classList.remove('hidden');
                 cAset.classList.add('grid');
+                
+                lMapForm.innerHTML = '<i class="ph-fill ph-map-pin"></i> Tandai Lokasi Aset (Titik)';
+                lMapStatus.innerText = currentGeoJSON ? 'Titik Lokasi Tersimpan (Buka Peta untuk Edit)' : 'Opsional: Pasang pin koordinat (GPS) untuk aset ini.';
             }
         }
 
@@ -798,7 +821,6 @@
             document.getElementById('inspeksi-form').classList.toggle('hidden', !show);
             
             if(show && editingId === null) {
-                // Pastikan jika bukan "Update", form terbuka fresh (Unlock)
                 document.getElementById('form-title-head').innerText = "Form Inspeksi Baru";
                 document.getElementById('form-subtitle-head').innerText = "Catat objek baru di lapangan.";
                 
@@ -809,12 +831,11 @@
                 elObjek.readOnly = false;
                 document.getElementById('hint-objek').classList.add('hidden');
 
-                // Reset Values
                 elObjek.value = '';
                 document.getElementById('form-catatan').value = '';
                 document.getElementById('form-qty-baik').value = '';
                 document.getElementById('form-qty-rusak').value = '';
-                document.getElementById('form-map-status').innerText = 'Gunakan jika area belum digambar';
+                
                 currentGeoJSON = null;
                 if(drawnItems) drawnItems.clearLayers();
                 removePhoto();
@@ -843,38 +864,78 @@
             document.getElementById('photo-input-container').classList.remove('hidden');
         }
 
-        // LEAFLET MAP (UNTUK FORM GAMBAR AREA)
+        // LEAFLET MAP (UNTUK FORM GAMBAR AREA / TITIK)
         function initMap() {
             if (map) { map.invalidateSize(); return; }
-            map = L.map('map-container', {zoomControl: false}).setView([-6.2625, 106.8850], 15); // Default ke Jkt
+            map = L.map('map-container', {zoomControl: false}).setView([-6.2625, 106.8850], 15);
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
             drawnItems = new L.FeatureGroup().addTo(map);
+            
+            // Konfigurasi Tools Edit Leaflet
             const drawControl = new L.Control.Draw({
-                edit: { featureGroup: drawnItems },
-                draw: { polygon: { shapeOptions: { color: '#ef4444' } }, polyline: false, rectangle: true, circle: false, marker: false, circlemarker: false }
+                edit: { 
+                    featureGroup: drawnItems,
+                    remove: true // Izinkan Hapus
+                },
+                draw: { 
+                    polygon: { shapeOptions: { color: '#ef4444' } }, 
+                    marker: true, // Membolehkan Titik (Untuk Sarpras)
+                    polyline: false, rectangle: true, circle: false, circlemarker: false 
+                }
             });
             map.addControl(drawControl);
             
-            // Lokasikan pengguna saat form peta dibuka
             map.locate({setView: true, maxZoom: 18});
 
+            // Event saat baru membuat gambar
             map.on(L.Draw.Event.CREATED, function (e) {
-                drawnItems.clearLayers();
+                drawnItems.clearLayers(); // Pastikan cuma 1 gambar per laporan
                 drawnItems.addLayer(e.layer);
                 currentGeoJSON = e.layer.toGeoJSON();
-                document.getElementById('form-map-status').innerText = 'Area Terpetakan (Update)';
+                document.getElementById('form-map-status').innerText = 'Data GIS Berhasil Diambil';
                 document.getElementById('form-map-status').className = 'text-xs text-emerald-600 font-bold';
+            });
+
+            // Event saat mengedit (merubah bentuk poligon atau pindah titik)
+            map.on(L.Draw.Event.EDITED, function (e) {
+                e.layers.eachLayer(function (layer) {
+                    currentGeoJSON = layer.toGeoJSON();
+                });
+                document.getElementById('form-map-status').innerText = 'Data GIS Diperbarui';
+                document.getElementById('form-map-status').className = 'text-xs text-emerald-600 font-bold';
+            });
+
+            // Event saat menghapus gambar di mode Edit
+            map.on(L.Draw.Event.DELETED, function (e) {
+                if (drawnItems.getLayers().length === 0) {
+                    currentGeoJSON = null;
+                    document.getElementById('form-map-status').innerText = 'Data GIS Telah Dihapus';
+                    document.getElementById('form-map-status').className = 'text-xs text-amber-600 font-bold';
+                }
             });
         }
 
         function openMap() {
             document.getElementById('map-wrapper').classList.remove('hidden');
             document.getElementById('map-wrapper').classList.add('flex');
-            setTimeout(() => { initMap(); map.invalidateSize(); }, 200);
+            
+            setTimeout(() => { 
+                initMap(); 
+                map.invalidateSize(); 
+
+                // Jika ada data geojson sebelumnya, muat agar bisa diedit!
+                drawnItems.clearLayers();
+                if (currentGeoJSON) {
+                    const layer = L.geoJSON(currentGeoJSON);
+                    layer.eachLayer(l => drawnItems.addLayer(l));
+                    map.fitBounds(drawnItems.getBounds(), { maxZoom: 19 });
+                }
+            }, 300);
         }
 
         function closeMap() {
+            // Tutup toolbar edit jika masih aktif saat menekan Selesai
             document.querySelectorAll('.leaflet-draw-actions a').forEach(a => {
                 if(a.title.includes('Finish') || a.title.includes('Save')) a.click();
             });
@@ -887,30 +948,17 @@
             e.preventDefault();
             const kat = document.getElementById('form-kategori').value;
             const newData = {
-                id: editingId || Date.now(), // Jika editingId ada, overwrite log tsb. Jika null (baru/update), bikin ID baru.
+                id: editingId || Date.now(),
                 timestamp: editingId ? reports.find(r=>r.id===editingId).timestamp : new Date().toISOString(),
                 kategori: kat,
                 objek: document.getElementById('form-objek').value,
                 catatan: document.getElementById('form-catatan').value,
-                foto: document.getElementById('form-photo-base64').value
+                foto: document.getElementById('form-photo-base64').value,
+                geojson: currentGeoJSON // Sekarang berlaku baik bangunan maupun aset
             };
 
             if(kat === 'bangunan') {
                 newData.kondisi = document.getElementById('form-kondisi').value;
-                
-                // Jika update timeline (bukan edit mentah), dan user tidak menggambar polygon baru, kita salin geojson dari history sebelumnya
-                if (!editingId && currentGeoJSON === null && document.getElementById('form-objek').readOnly) {
-                    const groups = getGroupedObjects();
-                    const group = groups.find(g => g.originalName === newData.objek);
-                    if (group && group.history.length > 0) {
-                        newData.geojson = group.history[group.history.length - 1].geojson;
-                    } else {
-                        newData.geojson = currentGeoJSON;
-                    }
-                } else {
-                    newData.geojson = currentGeoJSON;
-                }
-
                 if(!newData.foto && !editingId) return alert("Wajib melampirkan foto untuk inspeksi struktur bangunan!");
             } else {
                 newData.qtyBaik = document.getElementById('form-qty-baik').value;
@@ -918,19 +966,16 @@
             }
 
             if (editingId) {
-                // Benar-benar edit log mentahan yang typo (bukan re-post timeline)
                 const idx = reports.findIndex(r => r.id === editingId);
                 reports[idx] = newData;
             } else {
-                // Post Baru (Entah objek baru, atau update timeline objek lama)
                 reports.unshift(newData);
             }
 
             localStorage.setItem('sekolah_reports', JSON.stringify(reports));
             toggleFormInspeksi(false);
-            editingId = null; // bersihkan
+            editingId = null;
             
-            // Kalau dia nge-update dari view pemantauan, pas nyimpen balik ke pemantauan
             const isUpdateFlow = document.getElementById('form-objek').readOnly === true;
             if (isUpdateFlow) {
                 switchTab('pemantauan');
@@ -991,7 +1036,7 @@
             const r = reports.find(x => x.id === id);
             if(!r) return;
             
-            editingId = id; // Set ID
+            editingId = id; 
             
             document.getElementById('inspeksi-list').classList.add('hidden');
             document.getElementById('inspeksi-form').classList.remove('hidden');
@@ -999,11 +1044,12 @@
             document.getElementById('form-title-head').innerText = "Edit Typo Laporan Mentah";
             document.getElementById('form-subtitle-head').innerText = "Hanya gunakan untuk memperbaiki kesalahan ketik.";
 
-            // Bebaskan form
             const elKat = document.getElementById('form-kategori');
             elKat.disabled = false;
             elKat.value = r.kategori;
-            handleFormKategori();
+            
+            currentGeoJSON = r.geojson;
+            handleFormKategori(); // Menangani tulisan hint map sesuai currentGeoJSON
 
             const elObjek = document.getElementById('form-objek');
             elObjek.readOnly = false;
@@ -1015,8 +1061,6 @@
 
             if(r.kategori === 'bangunan') {
                 document.getElementById('form-kondisi').value = r.kondisi;
-                currentGeoJSON = r.geojson;
-                document.getElementById('form-map-status').innerText = r.geojson ? 'Peta Lama Tersimpan' : 'Peta Belum Ada';
             } else {
                 document.getElementById('form-qty-baik').value = r.qtyBaik;
                 document.getElementById('form-qty-rusak').value = r.qtyRusak;
@@ -1033,12 +1077,11 @@
 
         // UPDATE DASHBOARD METRICS
         function updateDashboard() {
-            const groups = getGroupedObjects(); // Menggunakan grouping untuk metrik cerdas
+            const groups = getGroupedObjects(); 
             
-            document.getElementById('dash-total-lap').innerText = reports.length; // Total log mentah
-            document.getElementById('dash-total-objek').innerText = groups.length; // Total objek unik
+            document.getElementById('dash-total-lap').innerText = reports.length; 
+            document.getElementById('dash-total-objek').innerText = groups.length; 
             
-            // Hitung kondisi Kritis (Hanya dari status TERAKHIR setiap grup)
             const kritis = groups.filter(g => g.kategori === 'bangunan' && g.history[g.history.length-1].kondisi === 'Rusak Berat').length;
             document.getElementById('dash-total-kritis').innerText = kritis;
             
@@ -1071,14 +1114,13 @@
             btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Mengirim...'; btn.disabled = true;
 
             try {
-                // Di sini GeoJSON utuh, Id, Sarpras ikut dikirim masuk dalam JSON payload!
                 const payloadSafe = reports.map(r => { const rCopy = {...r}; delete rCopy.foto; return rCopy; });
                 const formData = new URLSearchParams();
                 
                 formData.append('entry.111111', schoolInfo.nama);
                 formData.append('entry.222222', schoolInfo.npsn);
                 formData.append('entry.333333', schoolInfo.inspektur);
-                formData.append('entry.444444', JSON.stringify(payloadSafe)); // Seluruh riwayat akan masuk spreadsheet sbg raw JSON
+                formData.append('entry.444444', JSON.stringify(payloadSafe));
 
                 await fetch(url, {
                     method: 'POST', mode: 'no-cors',
@@ -1111,12 +1153,10 @@
                 reports: reports
             };
 
-            // Mengonversi ke JSON string
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
             
-            // Format Nama File Backup
             const fileName = schoolInfo 
                 ? `Backup_${schoolInfo.nama.replace(/\s+/g, '_')}_${new Date().getTime()}.json` 
                 : "Backup_SekolahAman.json";
@@ -1155,7 +1195,6 @@
                 }
             };
             reader.readAsText(file);
-            // Kosongkan value input agar bisa memuat file yang sama lagi jika perlu
             event.target.value = '';
         }
 
@@ -1182,34 +1221,34 @@
                     inspektur: "Tim BPBD / Damkar"
                 };
 
-                // Membuat simulasi waktu mundur
                 const now = new Date();
                 const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000)).toISOString();
                 const oneDayAgo = new Date(now.getTime() - (1 * 24 * 60 * 60 * 1000)).toISOString();
                 const twoHoursAgo = new Date(now.getTime() - (2 * 60 * 60 * 1000)).toISOString();
 
-                // GeoJSON Dummy (sekitar Halim / Dirgantara)
+                // GeoJSON Dummy Gedung (Polygon) & Sarpras (Point)
                 const geoHalimGedungUtama = {"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[106.8820,-6.2620],[106.8825,-6.2620],[106.8825,-6.2625],[106.8820,-6.2625],[106.8820,-6.2620]]]}};
                 const geoHalimKelas1A = {"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[106.8826,-6.2626],[106.8830,-6.2626],[106.8830,-6.2630],[106.8826,-6.2630],[106.8826,-6.2626]]]}};
+                const geoTitikTV = {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[106.88225, -6.26225]}};
 
                 const sampleReports = [
-                    // Historis Sarpras (Tidak pakai peta)
+                    // Historis Sarpras (Kini dilengkapi peta Point)
                     {
                         id: 1001, timestamp: threeDaysAgo, kategori: "sarpras", objek: "TV LED Bantuan Pusat",
-                        qtyBaik: 5, qtyRusak: 0, catatan: "Barang baru tiba dari dinas, segel pabrik.", foto: ""
+                        qtyBaik: 5, qtyRusak: 0, catatan: "Barang baru tiba dari dinas, segel pabrik.", geojson: geoTitikTV, foto: ""
                     },
                     {
                         id: 1003, timestamp: twoHoursAgo, kategori: "sarpras", objek: "TV LED Bantuan Pusat",
-                        qtyBaik: 4, qtyRusak: 1, catatan: "Satu layar retak karena tersenggol siswa saat istirahat.", foto: ""
+                        qtyBaik: 4, qtyRusak: 1, catatan: "Satu layar retak karena tersenggol siswa saat istirahat.", geojson: geoTitikTV, foto: ""
                     },
                     
-                    // Historis Gedung Utama (Tidak ada perubahan kerusakan, tetap aman)
+                    // Historis Gedung Utama
                     {
                         id: 1005, timestamp: threeDaysAgo, kategori: "bangunan", objek: "Gedung Utama (Kepsek/Guru)",
                         kondisi: "Aman", catatan: "Inspeksi awal gedung utama pasca renovasi.", geojson: geoHalimGedungUtama, foto: ""
                     },
 
-                    // Historis Kelas 1A (Awalnya aman -> Berubah jadi Rusak Sedang)
+                    // Historis Kelas 1A
                     {
                         id: 1002, timestamp: oneDayAgo, kategori: "bangunan", objek: "Gedung Kelas 1A",
                         kondisi: "Aman", catatan: "Kondisi tembok dan atap aman terkendali saat inspeksi rutin.", geojson: geoHalimKelas1A, foto: ""
