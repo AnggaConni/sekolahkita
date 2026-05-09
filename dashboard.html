@@ -38,6 +38,9 @@
         
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .view-section { display: none; }
+        .view-section.active { display: flex; animation: fadeIn 0.3s ease-in-out; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col md:flex-row overflow-hidden">
@@ -57,22 +60,14 @@
         <div class="p-6 flex-1 overflow-y-auto hidden md:block">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Navigasi Utama</p>
             <nav class="space-y-2">
-                <a href="#" class="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold transition-colors border border-blue-100">
+                <button onclick="switchView('global')" id="nav-global" class="w-full text-left flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold transition-colors border border-blue-100">
                     <i class="ph-bold ph-squares-four text-xl"></i> Ringkasan Global
-                </a>
-                <a href="tool.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-xl font-semibold transition-colors">
-                    <i class="ph-bold ph-app-window text-xl"></i> Buka Alat Inspeksi
-                </a>
+                </button>
+                <button onclick="switchView('sarpras')" id="nav-sarpras" class="w-full text-left flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-xl font-semibold transition-colors border border-transparent">
+                    <i class="ph-bold ph-package text-xl"></i> Sarpras Monitoring
+                </button>
             </nav>
 
-            <div class="mt-8">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Filter Sekolah</p>
-                <select id="filter-sekolah" onchange="filterDataSekolah()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="ALL">Tampilkan Semua Sekolah</option>
-                    <!-- Opsi diisi otomatis -->
-                </select>
-            </div>
-            
             <div class="mt-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Status Sinkronisasi</p>
                 <div class="flex items-center gap-2 mb-3">
@@ -89,24 +84,26 @@
     <!-- CONTENT AREA -->
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         
-        <!-- Header Mobile (Filter) -->
-        <div class="md:hidden bg-white p-4 border-b border-slate-200 flex gap-2 z-20 shadow-sm">
-            <select id="filter-sekolah-mobile" onchange="document.getElementById('filter-sekolah').value = this.value; filterDataSekolah();" class="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="ALL">Semua Sekolah</option>
-            </select>
-            <button onclick="fetchData()" class="bg-blue-50 text-blue-600 px-4 rounded-lg font-bold"><i class="ph-bold ph-arrows-clockwise"></i></button>
+        <!-- Header Mobile (Navigasi) -->
+        <div class="md:hidden bg-white border-b border-slate-200 flex z-20 shadow-sm overflow-x-auto">
+            <button onclick="switchView('global')" id="nav-global-mobile" class="flex-1 py-4 px-2 text-sm font-bold text-blue-600 border-b-2 border-blue-600 shrink-0 text-center">Ringkasan Global</button>
+            <button onclick="switchView('sarpras')" id="nav-sarpras-mobile" class="flex-1 py-4 px-2 text-sm font-semibold text-slate-500 border-b-2 border-transparent shrink-0 text-center">Sarpras Monitoring</button>
+            <button onclick="fetchData()" class="px-4 border-l border-slate-200 text-blue-600 bg-blue-50 shrink-0"><i class="ph-bold ph-arrows-clockwise text-xl"></i></button>
         </div>
 
         <div id="loading-screen" class="absolute inset-0 bg-white/80 backdrop-blur z-50 flex flex-col justify-center items-center">
             <i class="ph-bold ph-spinner-gap text-5xl text-blue-600 animate-spin mb-4"></i>
             <h2 class="text-lg font-bold text-slate-800">Menarik Data dari Database...</h2>
-            <p class="text-xs text-slate-500 mt-1">Mengolah ratusan riwayat laporan ke dalam timeline.</p>
+            <p class="text-xs text-slate-500 mt-1">Mengolah riwayat laporan ke dalam sistem.</p>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-32">
+        <!-- ============================================== -->
+        <!-- VIEW 1: RINGKASAN GLOBAL (PETA & TIMELINE)     -->
+        <!-- ============================================== -->
+        <section id="view-global" class="view-section active flex-1 overflow-y-auto p-4 md:p-8 flex-col">
             
             <!-- GLOBAL METRICS -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 shrink-0">
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
                     <p class="text-[10px] font-bold text-slate-400 uppercase">Sekolah Terpantau</p>
                     <h3 class="text-3xl font-black text-slate-800 mt-1" id="stat-sekolah">0</h3>
@@ -125,12 +122,19 @@
                 </div>
             </div>
 
-            <div class="flex flex-col lg:flex-row gap-8">
-                
+            <!-- FILTER KHUSUS GLOBAL -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4 items-center shrink-0">
+                <div class="w-full md:w-auto font-bold text-slate-600 text-sm"><i class="ph-bold ph-funnel"></i> Fokus Peta:</div>
+                <select id="filter-sekolah-global" onchange="filterDataGlobal()" class="w-full md:flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="ALL">Semua Sekolah (Agregat)</option>
+                </select>
+            </div>
+
+            <div class="flex flex-col lg:flex-row gap-8 flex-1 min-h-0 pb-16 md:pb-0">
                 <!-- KOLOM KIRI: DAFTAR OBJEK / PETA -->
-                <div class="flex-1 space-y-6">
+                <div class="flex-1 space-y-6 flex flex-col min-h-0">
                     <!-- Peta Persebaran -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden shrink-0">
                         <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-map-trifold text-blue-600"></i> Peta Persebaran</h3>
                         </div>
@@ -138,23 +142,21 @@
                     </div>
 
                     <!-- Daftar Objek yang Difilter -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-end">
-                            <div>
-                                <h3 class="font-bold text-slate-800 text-lg" id="list-title">Daftar Objek (Semua Sekolah)</h3>
-                                <p class="text-xs text-slate-500 mt-1">Pilih objek untuk melihat riwayat tren dan timeline-nya.</p>
-                            </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-[300px]">
+                        <div class="p-5 border-b border-slate-100 shrink-0">
+                            <h3 class="font-bold text-slate-800 text-lg">Daftar Objek Terpantau</h3>
+                            <p class="text-xs text-slate-500 mt-1">Pilih objek untuk melihat riwayat tren dan timeline-nya di sebelah kanan.</p>
                         </div>
-                        <div class="p-5 space-y-3" id="object-list-container">
+                        <div class="p-5 overflow-y-auto flex-1 space-y-3" id="object-list-container">
                             <!-- Diisi oleh JS -->
                         </div>
                     </div>
                 </div>
 
                 <!-- KOLOM KANAN: TIMELINE TREN (Panel Interaktif) -->
-                <div class="w-full lg:w-[450px] shrink-0 hidden lg:block" id="timeline-panel">
-                    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 sticky top-4 overflow-hidden h-[calc(100vh-2rem)] flex flex-col">
-                        <div class="p-6 bg-slate-800 text-white relative">
+                <div class="w-full lg:w-[450px] shrink-0 hidden lg:flex flex-col">
+                    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col h-full">
+                        <div class="p-6 bg-slate-800 text-white relative shrink-0">
                             <i class="ph-fill ph-clock-counter-clockwise absolute -right-6 -bottom-6 text-9xl opacity-10"></i>
                             <div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/20 rounded text-[10px] font-bold uppercase tracking-wider mb-3 backdrop-blur" id="tl-kategori">Analisis Tren</div>
                             <h2 class="text-2xl font-black leading-tight mb-1" id="tl-objek-nama">Pilih Objek</h2>
@@ -162,7 +164,7 @@
                         </div>
                         
                         <!-- Area Grafik/Tren -->
-                        <div class="p-5 bg-slate-50 border-b border-slate-200 text-center" id="tl-trend-box">
+                        <div class="p-5 bg-slate-50 border-b border-slate-200 text-center shrink-0" id="tl-trend-box">
                             <p class="text-xs font-bold text-slate-500 uppercase">Status Tren Saat Ini</p>
                             <h3 class="text-xl font-black text-slate-400 mt-1">Belum Ada Data</h3>
                         </div>
@@ -188,7 +190,7 @@
                             <button onclick="closeTimelineMobile()" class="bg-white/20 p-2 rounded-full text-white hover:bg-white/30 transition"><i class="ph-bold ph-x text-lg"></i></button>
                         </div>
                         
-                        <div class="p-4 bg-slate-50 border-b border-slate-200 text-center" id="tl-trend-box-mobile">
+                        <div class="p-4 bg-slate-50 border-b border-slate-200 text-center shrink-0" id="tl-trend-box-mobile">
                             <!-- Trend Diisi JS -->
                         </div>
 
@@ -197,21 +199,89 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- VIEW 2: SARPRAS MONITORING (AUDIT INVENTARIS)  -->
+        <!-- ============================================== -->
+        <section id="view-sarpras" class="view-section flex-1 p-4 md:p-8 flex-col overflow-hidden bg-slate-100/50">
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                
+                <!-- Header & Smart Filters -->
+                <div class="p-5 md:p-6 border-b border-slate-200 bg-white shrink-0 z-10">
+                    <h2 class="text-xl font-black text-slate-800 mb-1">Audit Inventaris & Bangunan</h2>
+                    <p class="text-xs text-slate-500 mb-5">Gunakan filter cerdas di bawah untuk mencari aset atau gedung yang spesifik di seluruh cabang sekolah.</p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        <!-- Filter Pencarian Teks -->
+                        <div class="relative">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-3.5 text-slate-400"></i>
+                            <input type="text" id="filter-text" oninput="renderSarprasTable()" placeholder="Ketik kata kunci..." class="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Filter NPSN -->
+                        <select id="filter-sekolah-sarpras" onchange="renderSarprasTable()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ALL">Semua Sekolah</option>
+                        </select>
+
+                        <!-- Filter Jenis Objek -->
+                        <select id="filter-jenis" onchange="renderSarprasTable()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ALL">Semua Jenis Objek</option>
+                        </select>
+
+                        <!-- Filter Kondisi -->
+                        <select id="filter-kondisi" onchange="renderSarprasTable()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ALL">Semua Kondisi</option>
+                            <option value="Aman">Kondisi Aman / Baik (100%)</option>
+                            <option value="Rusak Ringan">Rusak Ringan / Ada yang Rusak Sebagian</option>
+                            <option value="Rusak Sedang">Rusak Sedang</option>
+                            <option value="Rusak Berat">Rusak Berat / Rusak Mayoritas</option>
+                        </select>
+
+                        <!-- Filter Auditor -->
+                        <select id="filter-auditor" onchange="renderSarprasTable()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ALL">Semua Auditor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table Area -->
+                <div class="flex-1 overflow-auto bg-slate-50 p-4 md:p-6 pb-20 md:pb-6">
+                    <div class="grid grid-cols-1 gap-4" id="sarpras-table-body">
+                        <!-- Kartu Objek Diisi JS -->
+                    </div>
+                </div>
+                
+                <!-- Tabel Footer (Agregat Total Berdasarkan Filter) -->
+                <div class="p-4 border-t border-slate-200 bg-slate-800 text-white shrink-0 flex flex-wrap justify-between items-center gap-4 text-sm font-bold rounded-b-2xl">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-fill ph-calculator text-xl text-blue-400"></i>
+                        <span>Total Sesuai Filter: <span id="audit-total-objek" class="text-blue-300">0</span> Objek</span>
+                    </div>
+                    <div class="flex gap-6">
+                        <span class="text-emerald-400"><i class="ph-bold ph-check-circle"></i> Aman/Baik: <span id="audit-total-baik">0</span></span>
+                        <span class="text-red-400"><i class="ph-bold ph-warning-octagon"></i> Rusak: <span id="audit-total-rusak">0</span></span>
+                    </div>
+                </div>
 
             </div>
-        </div>
+        </section>
+
     </main>
 
     <!-- JS LOGIC -->
     <script>
         // --- KONFIGURASI DATABASE GOOGLE SHEETS ---
-        // Link Publish to Web format CSV (Ganti bagian "/e/..../" dengan milik Anda jika perlu, ini menggunakan contoh yg diberikan)
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRP6gGURVEtCt1N0fGCqkWLvwNlfYbwBKD9k3CJ24tpAjR_nH9x3O0Xq9PTJzRy9-XNCTyHBoEkOJqO/pub?output=csv";
 
         // State Data
         let rawData = [];
         let allReports = [];
         let groupedData = {}; // Kunci: NPSN, Value: { sekolah, objek: { namaObjek: [riwayat1, riwayat2] } }
+        let flatObjects = []; // Array 1D yang isinya objek terbaru dari SEMUA sekolah (untuk Sarpras Table)
+        
         let map = null;
         let mapLayer = null;
 
@@ -219,9 +289,33 @@
         const bobotKondisi = { "Aman": 1, "Rusak Ringan": 2, "Rusak Sedang": 3, "Rusak Berat": 4 };
 
         window.onload = () => {
-            initMap();
             fetchData();
         };
+
+        // --- NAVIGATION TABS ---
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+
+            // Nav Desktop
+            document.getElementById('nav-global').className = "w-full text-left flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-xl font-semibold transition-colors border border-transparent";
+            document.getElementById('nav-sarpras').className = "w-full text-left flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-xl font-semibold transition-colors border border-transparent";
+            
+            // Nav Mobile
+            document.getElementById('nav-global-mobile').className = "flex-1 py-4 px-2 text-sm font-semibold text-slate-500 border-b-2 border-transparent shrink-0 text-center";
+            document.getElementById('nav-sarpras-mobile').className = "flex-1 py-4 px-2 text-sm font-semibold text-slate-500 border-b-2 border-transparent shrink-0 text-center";
+
+            if (viewId === 'global') {
+                document.getElementById('nav-global').className = "w-full text-left flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold transition-colors border border-blue-100";
+                document.getElementById('nav-global-mobile').className = "flex-1 py-4 px-2 text-sm font-bold text-blue-600 border-b-2 border-blue-600 shrink-0 text-center";
+                // Delay render map to ensure container has size
+                setTimeout(() => { if(!map) initMap(); else map.invalidateSize(); filterDataGlobal(); }, 100);
+            } else if (viewId === 'sarpras') {
+                document.getElementById('nav-sarpras').className = "w-full text-left flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold transition-colors border border-blue-100";
+                document.getElementById('nav-sarpras-mobile').className = "flex-1 py-4 px-2 text-sm font-bold text-blue-600 border-b-2 border-blue-600 shrink-0 text-center";
+                renderSarprasTable();
+            }
+        }
 
         // --- FETCH DATA DARI GOOGLE SHEETS ---
         function fetchData() {
@@ -230,13 +324,13 @@
 
             Papa.parse(CSV_URL, {
                 download: true,
-                header: true, // Mengambil baris pertama sebagai nama kolom
+                header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
                     processCSVData(results.data);
                 },
                 error: function(err) {
-                    alert("Gagal mengambil data dari Google Sheets. Pastikan link sudah di-Publish to Web (CSV).");
+                    alert("Gagal mengambil data dari Google Sheets.");
                     document.getElementById('loading-screen').classList.add('hidden');
                 }
             });
@@ -246,10 +340,10 @@
         function processCSVData(rows) {
             allReports = [];
             groupedData = {};
-            const processedIds = new Set(); // Mencegah ID duplikat akibat kirim ulang
+            flatObjects = [];
+            const processedIds = new Set();
 
             rows.forEach(row => {
-                // Mencari kolom yang berisi JSON. Biasanya di GForm posisinya bisa berubah, kita cari value yang dimulai dengan "[{"
                 let jsonStr = null;
                 for (let key in row) {
                     if (row[key] && row[key].trim().startsWith("[{") && row[key].trim().endsWith("}]")) {
@@ -261,9 +355,6 @@
                 if (jsonStr) {
                     try {
                         const payloads = JSON.parse(jsonStr);
-                        
-                        // Kolom standar dari form kita
-                        // Catatan: Nama kolom CSV mengikuti judul pertanyaan di Google Form. Kita tebak berdasarkan kata kunci.
                         let namaSekolah = "Sekolah Tidak Diketahui";
                         let npsn = "NPSN_XXX";
                         let inspektur = "-";
@@ -276,28 +367,19 @@
                         }
 
                         payloads.forEach(item => {
-                            // De-duplikasi berdasarkan ID (Timestamp millisecond)
                             if (!processedIds.has(item.id)) {
                                 processedIds.add(item.id);
                                 
-                                // Gabungkan info sekolah ke dalam laporan
                                 item.namaSekolah = namaSekolah;
                                 item.npsn = npsn;
                                 item.inspektur = inspektur;
                                 allReports.push(item);
 
-                                // Grouping
-                                if (!groupedData[npsn]) {
-                                    groupedData[npsn] = { namaSekolah, npsn, inspektur, objek: {} };
-                                }
+                                if (!groupedData[npsn]) groupedData[npsn] = { namaSekolah, npsn, inspektur, objek: {} };
                                 
                                 const objKey = item.objek.trim().toLowerCase();
                                 if (!groupedData[npsn].objek[objKey]) {
-                                    groupedData[npsn].objek[objKey] = {
-                                        originalName: item.objek.trim(),
-                                        kategori: item.kategori,
-                                        history: []
-                                    };
+                                    groupedData[npsn].objek[objKey] = { originalName: item.objek.trim(), kategori: item.kategori, npsn: npsn, namaSekolah: namaSekolah, history: [] };
                                 }
                                 groupedData[npsn].objek[objKey].history.push(item);
                             }
@@ -307,15 +389,51 @@
                 }
             });
 
-            // Urutkan history tiap objek dari terlama ke terbaru (Ascending) untuk kalkulasi trend
+            // Urutkan history & Build Flat Array
             for (let npsn in groupedData) {
                 for (let objKey in groupedData[npsn].objek) {
                     groupedData[npsn].objek[objKey].history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                    
+                    // Ambil kondisi terbaru untuk ditaruh di FlatArray (Bahan utama View 2)
+                    const latest = groupedData[npsn].objek[objKey].history[groupedData[npsn].objek[objKey].history.length - 1];
+                    let calcStatus = 'Aman';
+                    let totalBaik = 0; let totalRusak = 0;
+
+                    if (groupedData[npsn].objek[objKey].kategori === 'bangunan') {
+                        calcStatus = latest.kondisi;
+                        if(calcStatus === 'Aman') totalBaik = 1; else totalRusak = 1;
+                    } else {
+                        totalBaik = parseInt(latest.qtyBaik) || 0;
+                        totalRusak = parseInt(latest.qtyRusak) || 0;
+                        if(totalRusak === 0) calcStatus = 'Aman';
+                        else if (totalRusak >= totalBaik && totalBaik === 0) calcStatus = 'Rusak Berat';
+                        else calcStatus = 'Rusak Ringan'; // Gabungan sebagian rusak
+                    }
+
+                    flatObjects.push({
+                        npsn: npsn,
+                        namaSekolah: groupedData[npsn].namaSekolah,
+                        namaObjek: groupedData[npsn].objek[objKey].originalName,
+                        kategori: groupedData[npsn].objek[objKey].kategori,
+                        latestTimestamp: latest.timestamp,
+                        calcStatus: calcStatus,
+                        qtyBaik: totalBaik,
+                        qtyRusak: totalRusak,
+                        catatan: latest.catatan,
+                        inspektur: latest.inspektur
+                    });
                 }
             }
 
             populateFilter();
-            filterDataSekolah();
+            
+            // Re-render sesuai view yg aktif
+            if(document.getElementById('view-global').classList.contains('active')) {
+                if(!map) initMap(); else map.invalidateSize();
+                filterDataGlobal();
+            } else {
+                renderSarprasTable();
+            }
 
             setTimeout(() => {
                 document.getElementById('loading-screen').classList.add('hidden');
@@ -324,35 +442,61 @@
         }
 
         function populateFilter() {
-            const select = document.getElementById('filter-sekolah');
-            const selectMobile = document.getElementById('filter-sekolah-mobile');
+            const selectGlobal = document.getElementById('filter-sekolah-global');
+            const selectSarpras = document.getElementById('filter-sekolah-sarpras');
+            const selectAuditor = document.getElementById('filter-auditor');
+            const selectJenis = document.getElementById('filter-jenis');
             
-            let options = '<option value="ALL">Tampilkan Semua Sekolah</option>';
-            
+            // Populating NPSN
+            let optionsNPSN = '<option value="ALL">Semua Sekolah (Agregat)</option>';
             Object.values(groupedData).forEach(sekolah => {
-                options += `<option value="${sekolah.npsn}">${sekolah.npsn} - ${sekolah.namaSekolah}</option>`;
+                optionsNPSN += `<option value="${sekolah.npsn}">${sekolah.npsn} - ${sekolah.namaSekolah}</option>`;
+            });
+            selectGlobal.innerHTML = optionsNPSN;
+            selectSarpras.innerHTML = optionsNPSN;
+
+            // Populating Auditor dan Jenis Objek Dinamis
+            const uniqueAuditors = new Set();
+            const uniqueJenis = new Set();
+
+            flatObjects.forEach(obj => {
+                if(obj.inspektur) uniqueAuditors.add(obj.inspektur);
+                if(obj.namaObjek) uniqueJenis.add(obj.namaObjek);
             });
 
-            select.innerHTML = options;
-            selectMobile.innerHTML = options;
+            let optionsAuditor = '<option value="ALL">Semua Auditor</option>';
+            Array.from(uniqueAuditors).sort().forEach(auditor => {
+                optionsAuditor += `<option value="${auditor}">${auditor}</option>`;
+            });
+            selectAuditor.innerHTML = optionsAuditor;
+
+            let optionsJenis = '<option value="ALL">Semua Jenis Objek</option>';
+            Array.from(uniqueJenis).sort().forEach(jenis => {
+                optionsJenis += `<option value="${jenis}">${jenis}</option>`;
+            });
+            selectJenis.innerHTML = optionsJenis;
         }
 
-        // --- FILTER & RENDER TAMPILAN KIRI ---
-        function filterDataSekolah() {
-            const selectedNPSN = document.getElementById('filter-sekolah').value;
+        // ==========================================
+        // LOGIC VIEW 1: GLOBAL (Peta & Timeline)
+        // ==========================================
+        function initMap() {
+            map = L.map('global-map', { zoomControl: true }).setView([-0.789, 113.921], 5);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(map);
+            mapLayer = new L.FeatureGroup().addTo(map);
+        }
+
+        function filterDataGlobal() {
+            const selectedNPSN = document.getElementById('filter-sekolah-global').value;
             
-            // 1. Hitung Metrics Global
             let totalSekolah = Object.keys(groupedData).length;
-            let totalObjek = 0;
-            let totalKritis = 0;
-            let totalLogs = allReports.length;
+            let totalObjek = 0; let totalKritis = 0; let totalLogs = allReports.length;
 
             let listHTML = '';
             mapLayer.clearLayers();
             const mapBounds = [];
 
             Object.values(groupedData).forEach(sekolah => {
-                // Lewati jika difilter
                 if (selectedNPSN !== 'ALL' && sekolah.npsn !== selectedNPSN) return;
 
                 let sekolahObjekCount = Object.keys(sekolah.objek).length;
@@ -363,7 +507,6 @@
                 }
 
                 Object.values(sekolah.objek).forEach(obj => {
-                    // Cek latest history
                     const latest = obj.history[obj.history.length - 1];
                     const isBg = obj.kategori === 'bangunan';
                     const icon = isBg ? 'ph-buildings' : 'ph-package';
@@ -382,7 +525,7 @@
                         tagStr = `${bk} Baik | ${rsk} Rusak`;
                     }
 
-                    // Logika Tren Singkat
+                    // Tren Icon
                     let trendIcon = '';
                     if (obj.history.length > 1) {
                         const prev = obj.history[obj.history.length - 2];
@@ -392,9 +535,7 @@
                             else if (diff > 0) trendIcon = '<span class="text-red-500 bg-red-50 p-1 rounded" title="Memburuk"><i class="ph-bold ph-trend-down"></i></span>';
                             else trendIcon = '<span class="text-slate-400 bg-slate-50 p-1 rounded" title="Stagnan"><i class="ph-bold ph-minus"></i></span>';
                         } else {
-                            // Logic trend sarpras bisa didasarkan pada selisih jumlah rusak
-                            let prevRsk = parseInt(prev.qtyRusak) || 0;
-                            let rsk = parseInt(latest.qtyRusak) || 0;
+                            let prevRsk = parseInt(prev.qtyRusak) || 0; let rsk = parseInt(latest.qtyRusak) || 0;
                             if (rsk < prevRsk) trendIcon = '<span class="text-emerald-500 bg-emerald-50 p-1 rounded" title="Perbaikan/Diganti"><i class="ph-bold ph-trend-up"></i></span>';
                             else if (rsk > prevRsk) trendIcon = '<span class="text-red-500 bg-red-50 p-1 rounded" title="Kerusakan Bertambah"><i class="ph-bold ph-trend-down"></i></span>';
                             else trendIcon = '<span class="text-slate-400 bg-slate-50 p-1 rounded" title="Stagnan"><i class="ph-bold ph-minus"></i></span>';
@@ -403,7 +544,6 @@
                         trendIcon = '<span class="text-blue-400 bg-blue-50 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase" title="Data Baru">Baru</span>';
                     }
 
-                    // Render List
                     listHTML += `
                     <div onclick="openTimeline('${sekolah.npsn}', '${obj.originalName.replace(/'/g, "\\'")}')" class="bg-white border border-slate-200 p-3 rounded-xl hover:border-blue-400 hover:shadow-md transition-all cursor-pointer flex items-center justify-between mb-2 fade-in group">
                         <div class="flex items-center gap-3">
@@ -422,34 +562,19 @@
                         </div>
                     </div>`;
 
-                    // Render Map Layer jika ada GeoJSON
                     if (latest.geojson) {
                         let mapColor = clr === 'red' ? '#ef4444' : (clr === 'amber' ? '#f59e0b' : '#10b981');
-                        
                         const layer = L.geoJSON(latest.geojson, {
                             style: { color: mapColor, weight: 2, fillColor: mapColor, fillOpacity: 0.5 },
-                            pointToLayer: function (f, latlng) {
-                                return L.circleMarker(latlng, { radius: 6, fillColor: mapColor, color: '#fff', weight: 2, fillOpacity: 0.9 });
-                            }
+                            pointToLayer: function (f, latlng) { return L.circleMarker(latlng, { radius: 6, fillColor: mapColor, color: '#fff', weight: 2, fillOpacity: 0.9 }); }
                         });
-
-                        layer.bindPopup(`
-                            <div class="text-xs">
-                                <b class="block text-slate-800">${sekolah.namaSekolah}</b>
-                                <span class="text-slate-500">${obj.originalName}</span><br>
-                                <span class="mt-1 inline-block bg-slate-100 px-1 rounded border">Status: ${tagStr}</span>
-                            </div>
-                        `);
-                        
+                        layer.bindPopup(`<div class="text-xs"><b class="block text-slate-800">${sekolah.namaSekolah}</b><span class="text-slate-500">${obj.originalName}</span><br><span class="mt-1 inline-block bg-slate-100 px-1 rounded border">Status: ${tagStr}</span></div>`);
                         mapLayer.addLayer(layer);
-                        mapBounds.push(layer.getBounds ? layer.getBounds() : layer.getLatLng()); // Kumpulkan koordinat untuk auto-fit
                     }
                 });
-                
                 listHTML += `</div>`;
             });
 
-            // Update DOM Metrics
             if (selectedNPSN !== 'ALL') {
                 totalSekolah = 1; 
                 totalLogs = Object.values(groupedData[selectedNPSN].objek).reduce((sum, o) => sum + o.history.length, 0);
@@ -460,170 +585,191 @@
             document.getElementById('stat-kritis').innerText = totalKritis;
             document.getElementById('stat-logs').innerText = totalLogs;
 
-            const ctn = document.getElementById('object-list-container');
-            ctn.innerHTML = listHTML || `<div class="text-center p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl"><p class="text-slate-400 font-bold">Tidak ada data objek.</p></div>`;
+            document.getElementById('object-list-container').innerHTML = listHTML || `<div class="text-center p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl"><p class="text-slate-400 font-bold">Tidak ada data objek.</p></div>`;
 
-            // Auto-fit Map
-            if (mapLayer.getLayers().length > 0) {
-                map.fitBounds(L.featureGroup(mapLayer.getLayers()).getBounds(), { padding: [30, 30], maxZoom: 18 });
-            } else {
-                map.setView([-0.789, 113.921], 5); // Default Indonesia jika kosong
-            }
+            if (mapLayer.getLayers().length > 0) map.fitBounds(L.featureGroup(mapLayer.getLayers()).getBounds(), { padding: [30, 30], maxZoom: 18 });
+            else map.setView([-0.789, 113.921], 5);
 
-            // Reset Panel Kanan
             resetTimelinePanel();
         }
 
-        // --- MAP INISIALISASI ---
-        function initMap() {
-            map = L.map('global-map', { zoomControl: true }).setView([-0.789, 113.921], 5); // Center Indonesia
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles &copy; Esri'
-            }).addTo(map);
-            mapLayer = new L.FeatureGroup().addTo(map);
-        }
-
-        // --- TIMELINE & TREN PANEL (KANAN) ---
         function openTimeline(npsn, objName) {
             const sekolah = groupedData[npsn];
             const obj = sekolah.objek[objName.toLowerCase()];
             if(!obj) return;
-
             const isBg = obj.kategori === 'bangunan';
 
-            // Update Judul Panel
             document.getElementById('tl-kategori').innerText = isBg ? 'Struktur Gedung' : 'Aset & Sarpras';
             document.getElementById('tl-objek-nama').innerText = obj.originalName;
             document.getElementById('tl-sekolah-nama').innerText = `${sekolah.namaSekolah} (NPSN: ${npsn})`;
-            
             document.getElementById('tl-objek-nama-mobile').innerText = obj.originalName;
             document.getElementById('tl-sekolah-nama-mobile').innerText = sekolah.namaSekolah;
 
-            // --- HITUNG TREN & STATUS ---
             const trendBox = document.getElementById('tl-trend-box');
             const trendBoxMobile = document.getElementById('tl-trend-box-mobile');
             let trendHTML = '';
 
-            const historyDesc = [...obj.history]; // Sudah terurut lama -> baru
+            const historyDesc = [...obj.history]; 
             const latest = historyDesc[historyDesc.length - 1];
 
             if (historyDesc.length === 1) {
-                trendHTML = `
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Analisis Kondisi</p>
-                <div class="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold border border-blue-200">
-                    <i class="ph-bold ph-info text-xl"></i> Perekaman Data Baru
-                </div>
-                <p class="text-xs text-slate-500 mt-2">Belum ada riwayat sebelumnya untuk dibandingkan.</p>`;
+                trendHTML = `<p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Analisis Kondisi</p><div class="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold border border-blue-200"><i class="ph-bold ph-info text-xl"></i> Perekaman Data Baru</div><p class="text-xs text-slate-500 mt-2">Belum ada riwayat sebelumnya untuk dibandingkan.</p>`;
             } else {
                 const prev = historyDesc[historyDesc.length - 2];
                 let statusMsg = ""; let statusIcon = ""; let statusColor = "";
-
                 if (isBg) {
                     let diff = bobotKondisi[latest.kondisi] - bobotKondisi[prev.kondisi];
-                    if (diff < 0) { 
-                        statusMsg = diff <= -2 ? "Perbaikan Signifikan!" : "Terjadi Perbaikan"; 
-                        statusIcon = "ph-trend-up"; statusColor = "emerald"; 
-                    }
-                    else if (diff > 0) { 
-                        statusMsg = diff >= 2 ? "Kerusakan Mendadak / Kritis!" : "Kondisi Menurun"; 
-                        statusIcon = "ph-trend-down"; statusColor = "red"; 
-                    }
-                    else { 
-                        statusMsg = latest.kondisi === 'Aman' ? "Stagnan (Tetap Aman)" : "Stagnan (Belum Diperbaiki)"; 
-                        statusIcon = "ph-minus"; statusColor = latest.kondisi === 'Aman' ? "slate" : "amber"; 
-                    }
+                    if (diff < 0) { statusMsg = diff <= -2 ? "Perbaikan Signifikan!" : "Terjadi Perbaikan"; statusIcon = "ph-trend-up"; statusColor = "emerald"; }
+                    else if (diff > 0) { statusMsg = diff >= 2 ? "Kerusakan Mendadak / Kritis!" : "Kondisi Menurun"; statusIcon = "ph-trend-down"; statusColor = "red"; }
+                    else { statusMsg = latest.kondisi === 'Aman' ? "Stagnan (Tetap Aman)" : "Stagnan (Belum Diperbaiki)"; statusIcon = "ph-minus"; statusColor = latest.kondisi === 'Aman' ? "slate" : "amber"; }
                 } else {
-                    let prevRsk = parseInt(prev.qtyRusak) || 0;
-                    let rsk = parseInt(latest.qtyRusak) || 0;
+                    let prevRsk = parseInt(prev.qtyRusak) || 0; let rsk = parseInt(latest.qtyRusak) || 0;
                     if (rsk < prevRsk) { statusMsg = "Perbaikan / Aset Diganti"; statusIcon = "ph-trend-up"; statusColor = "emerald"; }
                     else if (rsk > prevRsk) { statusMsg = "Kerusakan Aset Bertambah"; statusIcon = "ph-trend-down"; statusColor = "red"; }
                     else { statusMsg = rsk === 0 ? "Stagnan (Semua Baik)" : "Stagnan (Masih Ada Rusak)"; statusIcon = "ph-minus"; statusColor = rsk === 0 ? "slate" : "amber"; }
                 }
-
-                trendHTML = `
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sistem Deteksi Perubahan</p>
-                <div class="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-${statusColor}-50 text-${statusColor}-700 rounded-xl font-black border border-${statusColor}-200 text-lg shadow-sm">
-                    <i class="ph-bold ${statusIcon} text-2xl"></i> ${statusMsg.toUpperCase()}
-                </div>
-                <p class="text-xs text-slate-500 mt-2">Perbandingan laporan terakhir dgn sebelumnya.</p>`;
+                trendHTML = `<p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sistem Deteksi Perubahan</p><div class="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-${statusColor}-50 text-${statusColor}-700 rounded-xl font-black border border-${statusColor}-200 text-lg shadow-sm"><i class="ph-bold ${statusIcon} text-2xl"></i> ${statusMsg.toUpperCase()}</div><p class="text-xs text-slate-500 mt-2">Perbandingan laporan terakhir dgn sebelumnya.</p>`;
             }
-            trendBox.innerHTML = trendHTML;
-            trendBoxMobile.innerHTML = trendHTML;
+            trendBox.innerHTML = trendHTML; trendBoxMobile.innerHTML = trendHTML;
 
-            // --- BUILD TIMELINE LIST ---
-            // Render dari terbaru ke terlama untuk tampilan list
             const historyAsc = [...obj.history].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-            
             let tlHTML = '';
             historyAsc.forEach((r, idx) => {
                 const isLatest = idx === 0;
-                
                 let tagStr = ''; let clr = '';
                 if(isBg) {
-                    tagStr = r.kondisi;
-                    clr = r.kondisi === 'Rusak Berat' ? 'red' : (r.kondisi === 'Aman' ? 'emerald' : 'amber');
+                    tagStr = r.kondisi; clr = r.kondisi === 'Rusak Berat' ? 'red' : (r.kondisi === 'Aman' ? 'emerald' : 'amber');
                 } else {
                     const bk = parseInt(r.qtyBaik)||0; const rsk = parseInt(r.qtyRusak)||0;
-                    tagStr = `${bk} Baik | ${rsk} Rusak`;
-                    clr = rsk > 0 ? (rsk >= bk ? 'red' : 'amber') : 'emerald';
+                    tagStr = `${bk} Baik | ${rsk} Rusak`; clr = rsk > 0 ? (rsk >= bk ? 'red' : 'amber') : 'emerald';
                 }
-
                 const dDate = new Date(r.timestamp).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                 const dTime = new Date(r.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
 
                 tlHTML += `
                 <div class="timeline-item relative pl-12 pb-8 fade-in">
                     <div class="timeline-line"></div>
-                    
-                    <div class="absolute left-2 top-0 w-10 h-10 rounded-full border-4 border-white ${isLatest ? 'bg-blue-600 shadow-md scale-110 z-10' : 'bg-slate-300 z-0'} flex items-center justify-center text-white">
-                        <i class="ph-bold ${isBg ? 'ph-buildings' : 'ph-package'} text-lg"></i>
-                    </div>
-                    
+                    <div class="absolute left-2 top-0 w-10 h-10 rounded-full border-4 border-white ${isLatest ? 'bg-blue-600 shadow-md scale-110 z-10' : 'bg-slate-300 z-0'} flex items-center justify-center text-white"><i class="ph-bold ${isBg ? 'ph-buildings' : 'ph-package'} text-lg"></i></div>
                     <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl ${isLatest ? 'border-l-4 border-l-blue-500 shadow-sm bg-white' : ''}">
                         <div class="flex justify-between items-start mb-3 border-b border-slate-100 pb-2">
-                            <div>
-                                <p class="text-xs font-black text-slate-800">${dDate}</p>
-                                <p class="text-[10px] text-slate-400 font-medium">${dTime} WIB | Inspektur: ${r.inspektur}</p>
-                            </div>
+                            <div><p class="text-xs font-black text-slate-800">${dDate}</p><p class="text-[10px] text-slate-400 font-medium">${dTime} WIB | Ins: ${r.inspektur}</p></div>
                             <span class="text-[10px] font-bold bg-${clr}-100 text-${clr}-700 px-2 py-1 rounded border border-${clr}-200">${tagStr}</span>
                         </div>
                         <p class="text-sm text-slate-700 leading-relaxed">"${r.catatan}"</p>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('tl-history-list').innerHTML = tlHTML; document.getElementById('tl-history-list-mobile').innerHTML = tlHTML;
+            if(window.innerWidth < 1024) { document.getElementById('modal-timeline-mobile').classList.remove('hidden'); document.getElementById('modal-timeline-mobile').classList.add('flex'); }
+        }
+
+        function closeTimelineMobile() { document.getElementById('modal-timeline-mobile').classList.add('hidden'); document.getElementById('modal-timeline-mobile').classList.remove('flex'); }
+        function resetTimelinePanel() {
+            document.getElementById('tl-kategori').innerText = 'Analisis Tren'; document.getElementById('tl-objek-nama').innerText = 'Pilih Objek'; document.getElementById('tl-sekolah-nama').innerText = 'Klik salah satu objek di daftar kiri untuk memuat timeline.';
+            document.getElementById('tl-trend-box').innerHTML = `<p class="text-xs font-bold text-slate-500 uppercase">Status Tren Saat Ini</p><h3 class="text-xl font-black text-slate-400 mt-1">Belum Ada Data</h3>`;
+            document.getElementById('tl-history-list').innerHTML = `<div class="text-center p-8 text-slate-400"><i class="ph-fill ph-hand-pointing text-4xl mb-3"></i><p class="text-sm font-bold">Silakan pilih objek di sebelah kiri.</p></div>`;
+        }
+
+
+        // ==========================================
+        // LOGIC VIEW 2: SARPRAS MONITORING (BARU)
+        // ==========================================
+        function renderSarprasTable() {
+            const filterText = document.getElementById('filter-text').value.toLowerCase();
+            const filterNPSN = document.getElementById('filter-sekolah-sarpras').value;
+            const filterKond = document.getElementById('filter-kondisi').value;
+            const filterAuditor = document.getElementById('filter-auditor').value;
+            const filterJenis = document.getElementById('filter-jenis').value;
+            
+            const container = document.getElementById('sarpras-table-body');
+            
+            let totalTampil = 0;
+            let sumBaik = 0;
+            let sumRusak = 0;
+
+            const filteredData = flatObjects.filter(obj => {
+                // Teks Filter
+                if (filterText && !obj.namaObjek.toLowerCase().includes(filterText) && !obj.catatan.toLowerCase().includes(filterText)) return false;
+                
+                // NPSN Filter
+                if (filterNPSN !== 'ALL' && obj.npsn !== filterNPSN) return false;
+                
+                // Auditor Filter
+                if (filterAuditor !== 'ALL' && obj.inspektur !== filterAuditor) return false;
+
+                // Jenis Objek Filter
+                if (filterJenis !== 'ALL' && obj.namaObjek !== filterJenis) return false;
+
+                // Kondisi Filter
+                if (filterKond !== 'ALL') {
+                    if(filterKond === 'Aman' && obj.calcStatus !== 'Aman') return false;
+                    if(filterKond === 'Rusak Ringan' && obj.calcStatus !== 'Rusak Ringan') return false;
+                    if(filterKond === 'Rusak Sedang' && obj.calcStatus !== 'Rusak Sedang') return false;
+                    if(filterKond === 'Rusak Berat' && obj.calcStatus !== 'Rusak Berat') return false;
+                }
+                
+                return true;
+            });
+
+            if (filteredData.length === 0) {
+                container.innerHTML = `<div class="text-center p-12 bg-white rounded-xl shadow-sm border border-slate-200"><i class="ph-bold ph-magnifying-glass text-4xl text-slate-300 mb-3 block"></i><p class="text-slate-500 font-bold">Tidak ada data objek yang cocok dengan filter pencarian Anda.</p></div>`;
+                document.getElementById('audit-total-objek').innerText = "0";
+                document.getElementById('audit-total-baik').innerText = "0";
+                document.getElementById('audit-total-rusak').innerText = "0";
+                return;
+            }
+
+            let htmlStr = '';
+            
+            filteredData.forEach(obj => {
+                totalTampil++;
+                sumBaik += obj.qtyBaik;
+                sumRusak += obj.qtyRusak;
+
+                const isBg = obj.kategori === 'bangunan';
+                const icon = isBg ? 'ph-buildings' : 'ph-package';
+                
+                let clr = 'blue'; let tagLabel = '';
+                if(isBg) {
+                    clr = obj.calcStatus === 'Rusak Berat' ? 'red' : (obj.calcStatus === 'Aman' ? 'emerald' : 'amber');
+                    tagLabel = obj.calcStatus;
+                } else {
+                    clr = obj.qtyRusak > 0 ? (obj.qtyRusak >= obj.qtyBaik ? 'red' : 'amber') : 'emerald';
+                    tagLabel = `${obj.qtyBaik} Baik | ${obj.qtyRusak} Rusak`;
+                }
+
+                const dDate = new Date(obj.latestTimestamp).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'});
+
+                htmlStr += `
+                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row gap-4 items-start md:items-center">
+                    <!-- Icon & Nama -->
+                    <div class="flex items-center gap-4 flex-1 min-w-0 w-full">
+                        <div class="w-12 h-12 rounded-xl bg-${clr}-50 text-${clr}-600 flex items-center justify-center shrink-0 border border-${clr}-100">
+                            <i class="ph-fill ${icon} text-2xl"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="font-bold text-lg text-slate-800 truncate" title="${obj.namaObjek}">${obj.namaObjek}</h3>
+                            <p class="text-xs text-slate-500 truncate" title="${obj.namaSekolah}"><i class="ph-bold ph-graduation-cap text-slate-400"></i> ${obj.namaSekolah} (${obj.npsn}) | <i class="ph-bold ph-user text-slate-400"></i> ${obj.inspektur}</p>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="shrink-0 w-full md:w-auto bg-slate-50 p-2 md:p-3 rounded-lg border border-slate-100 flex md:flex-col items-center justify-between md:items-end gap-2">
+                        <span class="text-xs font-black bg-${clr}-100 text-${clr}-700 px-3 py-1.5 rounded uppercase tracking-wide border border-${clr}-200">${tagLabel}</span>
+                        <span class="text-[10px] text-slate-400 font-medium whitespace-nowrap"><i class="ph-bold ph-clock"></i> Diupdate ${dDate}</span>
                     </div>
                 </div>
                 `;
             });
 
-            document.getElementById('tl-history-list').innerHTML = tlHTML;
-            document.getElementById('tl-history-list-mobile').innerHTML = tlHTML;
+            container.innerHTML = htmlStr;
 
-            // Buka Modal jika di Mobile
-            if(window.innerWidth < 1024) {
-                document.getElementById('modal-timeline-mobile').classList.remove('hidden');
-                document.getElementById('modal-timeline-mobile').classList.add('flex');
-            }
+            // Update Tabel Footer Aggregation
+            document.getElementById('audit-total-objek').innerText = totalTampil;
+            document.getElementById('audit-total-baik').innerText = sumBaik;
+            document.getElementById('audit-total-rusak').innerText = sumRusak;
         }
 
-        function closeTimelineMobile() {
-            document.getElementById('modal-timeline-mobile').classList.add('hidden');
-            document.getElementById('modal-timeline-mobile').classList.remove('flex');
-        }
-
-        function resetTimelinePanel() {
-            document.getElementById('tl-kategori').innerText = 'Analisis Tren';
-            document.getElementById('tl-objek-nama').innerText = 'Pilih Objek';
-            document.getElementById('tl-sekolah-nama').innerText = 'Klik salah satu objek di daftar kiri untuk memuat timeline.';
-            
-            document.getElementById('tl-trend-box').innerHTML = `
-                <p class="text-xs font-bold text-slate-500 uppercase">Status Tren Saat Ini</p>
-                <h3 class="text-xl font-black text-slate-400 mt-1">Belum Ada Data</h3>`;
-            
-            document.getElementById('tl-history-list').innerHTML = `
-                <div class="text-center p-8 text-slate-400">
-                    <i class="ph-fill ph-hand-pointing text-4xl mb-3"></i>
-                    <p class="text-sm font-bold">Silakan pilih objek di sebelah kiri.</p>
-                </div>`;
-        }
     </script>
 </body>
 </html>
