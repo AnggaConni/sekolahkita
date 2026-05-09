@@ -103,10 +103,6 @@
                     <i class="ph-fill ph-map-trifold text-2xl md:text-xl md:mr-3"></i>
                     <span class="text-[10px] md:text-sm font-semibold mt-1 md:mt-0">Peta GIS</span>
                 </button>
-                <button onclick="switchTab('pemantauan')" id="nav-pemantauan" class="nav-btn flex-1 md:flex-none flex flex-col md:flex-row items-center md:justify-start p-2 md:px-4 md:py-3 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors shrink-0 px-4">
-                    <i class="ph-fill ph-table text-2xl md:text-xl md:mr-3"></i>
-                    <span class="text-[10px] md:text-sm font-semibold mt-1 md:mt-0">Pantau</span>
-                </button>
                 <button onclick="switchTab('inspeksi')" id="nav-inspeksi" class="nav-btn flex-1 md:flex-none flex flex-col md:flex-row items-center md:justify-start p-2 md:px-4 md:py-3 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors shrink-0 px-4">
                     <i class="ph-fill ph-plus-circle text-2xl md:text-xl md:mr-3"></i>
                     <span class="text-[10px] md:text-sm font-semibold mt-1 md:mt-0">Entri</span>
@@ -201,22 +197,23 @@
                     </div>
                 </section>
 
-                <!-- 1.5 PETA SEKOLAH (GIS PERSEBARAN) -->
-                <section id="view-peta" class="view-section h-full flex flex-col">
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-4 shrink-0">
+                <!-- 1.5 PETA SEKOLAH & DAFTAR PANTAU DIGABUNG -->
+                <section id="view-peta" class="view-section space-y-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                         <div class="flex justify-between items-center">
                             <div>
-                                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-map-trifold text-blue-600"></i> Peta Persebaran Sekolah</h2>
+                                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="ph-bold ph-map-trifold text-blue-600"></i> Peta & Persebaran</h2>
                                 <p class="text-xs text-slate-500 mt-1">Menggabungkan kondisi terbaru setiap gedung & sarpras dalam satu citra satelit.</p>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="flex-1 bg-slate-200 rounded-2xl overflow-hidden relative border border-slate-300 shadow-inner min-h-[500px]">
-                        <div id="school-main-map" class="absolute inset-0 z-0 h-full w-full"></div>
+                    <!-- Area Map dengan Height Tetap Agar Tidak Hilang (Blank) -->
+                    <div class="bg-slate-200 rounded-2xl overflow-hidden relative border border-slate-300 shadow-inner h-[400px] z-10 w-full">
+                        <div id="school-main-map" class="w-full h-full z-0"></div>
                         
                         <!-- Legenda -->
-                        <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg z-[15] text-[10px] font-bold border border-slate-200">
+                        <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg z-[15] text-[10px] font-bold border border-slate-200 pointer-events-none">
                             <p class="mb-2 text-slate-600 uppercase border-b pb-1">Kondisi Bangunan / Aset</p>
                             <div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 bg-[#10b981] opacity-70 border border-[#047857] rounded-sm"></div> Aman / Baik</div>
                             <div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 bg-[#f59e0b] opacity-70 border border-[#b45309] rounded-sm"></div> Rusak Ringan / Sebagian</div>
@@ -224,19 +221,18 @@
                             <div class="flex items-center gap-2"><div class="w-4 h-4 bg-[#ef4444] opacity-70 border border-[#b91c1c] rounded-sm"></div> Rusak Berat / Total</div>
                         </div>
                     </div>
-                </section>
 
-                <!-- 2. PEMANTAUAN (VIEW ASET & BANGUNAN - GROUPED) -->
-                <section id="view-pemantauan" class="view-section space-y-4">
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-0 z-20">
-                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-3"><i class="ph-bold ph-table text-blue-600"></i> Pantau Objek</h2>
+                    <!-- DAFTAR PANTAU TEPAT DI BAWAH PETA -->
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mt-4 sticky top-0 z-20">
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-3"><i class="ph-bold ph-list-bullets text-blue-600"></i> Daftar Objek Dipantau</h2>
+                        <p class="text-[10px] text-slate-500 mb-3 leading-relaxed">Gunakan tombol <b>Update Kondisi</b> pada list di bawah ini untuk <b>mengubah letak titik/area GPS</b> atau merubah status kerusakannya.</p>
                         <div class="relative">
                             <i class="ph-bold ph-magnifying-glass absolute left-4 top-3.5 text-slate-400 text-lg"></i>
                             <input type="text" id="search-pemantauan" oninput="renderPemantauan()" placeholder="Cari nama gedung atau barang..." class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-shadow" />
                         </div>
                     </div>
 
-                    <div id="pemantauan-container" class="space-y-3">
+                    <div id="pemantauan-container" class="space-y-3 pb-8">
                         <!-- Diisi oleh JS: Daftar Objek Unik -->
                     </div>
                 </section>
@@ -506,16 +502,19 @@
                 btn.classList.add('text-slate-400', 'hover:text-blue-600', 'hover:bg-blue-50/50');
             });
             const activeBtn = document.getElementById('nav-' + tabId);
-            activeBtn.classList.add('text-blue-600', 'bg-blue-50');
-            activeBtn.classList.remove('text-slate-400', 'hover:text-blue-600', 'hover:bg-blue-50/50');
+            if(activeBtn) {
+                activeBtn.classList.add('text-blue-600', 'bg-blue-50');
+                activeBtn.classList.remove('text-slate-400', 'hover:text-blue-600', 'hover:bg-blue-50/50');
+            }
 
             if(tabId === 'inspeksi') renderReports();
-            if(tabId === 'pemantauan') renderPemantauan();
             if(tabId === 'dashboard') updateDashboard();
             if(tabId === 'peta') {
-                // Beri jeda 300ms agar animasi transisi CSS '.view-section' selesai, 
-                // sehingga Leaflet bisa mengukur dimensi wadah dengan benar dan me-render peta.
-                setTimeout(renderPetaSekolah, 300);
+                renderPemantauan(); // Render list daftar objek di bawah peta
+                // Beri jeda agar animasi CSS '.view-section' selesai, Leaflet akan membaca dimensi yg valid
+                setTimeout(() => {
+                    renderPetaSekolah();
+                }, 350); 
             }
         }
 
@@ -546,6 +545,13 @@
 
         // --- TAB PETA PERSEBARAN SEKOLAH (MAIN GIS) ---
         function renderPetaSekolah() {
+            const mapContainer = document.getElementById('school-main-map');
+            // Mencegah Leaflet render ke container berdimensi 0
+            if (mapContainer.clientHeight === 0 || mapContainer.clientWidth === 0) {
+                setTimeout(renderPetaSekolah, 100);
+                return;
+            }
+
             if (!mainMap) {
                 // Inisiasi peta jika belum ada
                 mainMap = L.map('school-main-map', { zoomControl: true }).setView([-6.2625, 106.8850], 17); // Default zoom Jkt
@@ -556,7 +562,7 @@
                 mainMapLayer = new L.FeatureGroup().addTo(mainMap);
             }
 
-            // PENTING: Fix agar peta tidak abu-abu setelah transisi tab
+            // PENTING: Perbaiki ukuran peta setelah memastikan container tampil sempurna
             mainMap.invalidateSize();
             mainMapLayer.clearLayers();
 
@@ -628,9 +634,11 @@
             }
         }
 
-        // --- TAB PEMANTAUAN (VIEW ASET / BANGUNAN) ---
+        // --- DAFTAR PANTAU (DI BAWAH PETA GIS) ---
         function renderPemantauan() {
             const container = document.getElementById('pemantauan-container');
+            if(!container) return;
+            
             const searchInput = document.getElementById('search-pemantauan').value.toLowerCase();
             const groups = getGroupedObjects();
 
@@ -669,7 +677,7 @@
                             <h3 class="font-bold text-lg text-slate-800 leading-tight">${g.originalName}</h3>
                             <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider mb-2">Update Terakhir: ${dateStr}</p>
                             <span class="text-xs font-bold bg-${clr}-50 text-${clr}-700 border border-${clr}-200 px-2.5 py-1 rounded-md inline-block">${tagStr}</span>
-                            ${latestReport.geojson ? `<span class="text-[10px] ml-1 font-bold text-blue-500"><i class="ph-fill ph-map-pin"></i> GPS Terpasang</span>` : ''}
+                            ${latestReport.geojson ? `<span class="text-[10px] ml-1 font-bold text-blue-500"><i class="ph-fill ph-map-pin"></i> Peta/GPS Terpasang</span>` : ''}
                         </div>
                     </div>
                     
@@ -722,7 +730,7 @@
                 currentGeoJSON = null;
             }
             
-            document.getElementById('form-map-status').innerText = currentGeoJSON ? 'Area/Lokasi Lama Tersimpan (Opsional: Edit)' : 'Opsional: Tandai area/lokasi (GPS) baru.';
+            document.getElementById('form-map-status').innerText = currentGeoJSON ? 'Area/Lokasi Lama Tersimpan (Buka Peta Jika Ingin Edit)' : 'Opsional: Tandai area/lokasi (GPS) baru.';
             document.getElementById('form-map-status').className = 'text-xs text-blue-600 font-medium';
         }
 
@@ -978,7 +986,7 @@
             
             const isUpdateFlow = document.getElementById('form-objek').readOnly === true;
             if (isUpdateFlow) {
-                switchTab('pemantauan');
+                switchTab('peta'); // Langsung kembali ke Peta (gabungan dgn pantau) jika sedang update dari sana
             } else {
                 renderReports();
                 updateDashboard();
