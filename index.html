@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -169,6 +168,33 @@
                         <i class="ph-bold ph-paper-plane-tilt text-xl"></i>
                         Kirim Semua Data ke Database (Google Form)
                     </button>
+
+                    <!-- Manajemen Data Offline -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mt-6">
+                        <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2"><i class="ph-bold ph-database text-blue-600"></i> Manajemen Data (Offline)</h3>
+                        <p class="text-xs text-slate-500 mb-4">Simpan data ke perangkat Anda, pindahkan ke HP lain, atau bersihkan riwayat jika sesi inspeksi selesai.</p>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <button onclick="exportJSON()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-3 rounded-xl text-xs font-bold transition flex justify-center items-center gap-2 border border-slate-200">
+                                <i class="ph-bold ph-download-simple text-lg"></i> Backup (Export)
+                            </button>
+                            
+                            <div>
+                                <input type="file" id="import-json" accept=".json" class="hidden" onchange="importJSON(event)">
+                                <button onclick="document.getElementById('import-json').click()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 p-3 rounded-xl text-xs font-bold transition flex justify-center items-center gap-2 border border-slate-200">
+                                    <i class="ph-bold ph-upload-simple text-lg"></i> Load (Import)
+                                </button>
+                            </div>
+
+                            <button onclick="loadSampleData()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-3 rounded-xl text-xs font-bold transition flex justify-center items-center gap-2 border border-indigo-200" title="Muat data contoh untuk testing">
+                                <i class="ph-bold ph-flask text-lg"></i> Load Sample
+                            </button>
+
+                            <button onclick="resetAllData()" class="bg-red-50 hover:bg-red-100 text-red-600 p-3 rounded-xl text-xs font-bold transition flex justify-center items-center gap-2 border border-red-200">
+                                <i class="ph-bold ph-trash text-lg"></i> Reset Data
+                            </button>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- 2. PEMANTAUAN (VIEW ASET & BANGUNAN - GROUPED) -->
@@ -689,6 +715,27 @@
             }
         }
 
+        function handlePhoto(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                document.getElementById('photo-preview').src = evt.target.result;
+                document.getElementById('form-photo-base64').value = evt.target.result;
+                document.getElementById('photo-preview-container').classList.remove('hidden');
+                document.getElementById('photo-input-container').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removePhoto() {
+            document.getElementById('photo-preview').src = '';
+            document.getElementById('form-photo-base64').value = '';
+            document.getElementById('camera-input').value = '';
+            document.getElementById('photo-preview-container').classList.add('hidden');
+            document.getElementById('photo-input-container').classList.remove('hidden');
+        }
+
         // LEAFLET MAP
         function initMap() {
             if (map) { map.invalidateSize(); return; }
@@ -928,6 +975,145 @@
                 fb.className = 'text-xs text-center font-bold text-red-500 mt-2 block';
             }
             btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Kirim Sekarang'; btn.disabled = false;
+        }
+
+        // --- MANAJEMEN DATA OFFLINE (JSON EXPORT/IMPORT/RESET) ---
+        function exportJSON() {
+            if (reports.length === 0 && !schoolInfo) return alert("Tidak ada data untuk dibackup!");
+            
+            const dataToExport = {
+                version: "1.0",
+                exportDate: new Date().toISOString(),
+                schoolInfo: schoolInfo,
+                reports: reports
+            };
+
+            // Mengonversi ke JSON string
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            
+            // Format Nama File Backup
+            const fileName = schoolInfo 
+                ? `Backup_${schoolInfo.nama.replace(/\s+/g, '_')}_${new Date().getTime()}.json` 
+                : "Backup_SekolahAman.json";
+                
+            downloadAnchorNode.setAttribute("download", fileName);
+            document.body.appendChild(downloadAnchorNode); 
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    if (!importedData.schoolInfo && !importedData.reports) {
+                        throw new Error("Format file JSON tidak dikenali aplikasi ini.");
+                    }
+
+                    if (confirm("Data saat ini akan ditimpa dengan data dari file JSON. Lanjutkan?")) {
+                        if (importedData.schoolInfo) {
+                            localStorage.setItem('sekolah_info', JSON.stringify(importedData.schoolInfo));
+                        }
+                        if (importedData.reports && Array.isArray(importedData.reports)) {
+                            localStorage.setItem('sekolah_reports', JSON.stringify(importedData.reports));
+                        }
+                        alert("Data berhasil di-load! Aplikasi akan dimuat ulang.");
+                        location.reload();
+                    }
+                } catch (error) {
+                    alert("Error saat membaca file JSON: " + error.message);
+                }
+            };
+            reader.readAsText(file);
+            // Kosongkan value input agar bisa memuat file yang sama lagi jika perlu
+            event.target.value = '';
+        }
+
+        function resetAllData() {
+            if (confirm("⚠️ PERINGATAN KRITIS ⚠️\n\nApakah Anda yakin ingin MENGHAPUS SEMUA DATA (Profil & Riwayat Inspeksi) di perangkat ini?\n\nData yang belum di-backup atau di-sync akan HILANG PERMANEN!")) {
+                const konfirmasiKedua = prompt("Ketik kata 'HAPUS' (huruf kapital) untuk mengonfirmasi:");
+                if (konfirmasiKedua === 'HAPUS') {
+                    localStorage.removeItem('sekolah_info');
+                    localStorage.removeItem('sekolah_reports');
+                    alert("Seluruh data lokal telah berhasil dibersihkan.");
+                    location.reload();
+                } else {
+                    alert("Kata yang diketik salah. Proses reset dibatalkan.");
+                }
+            }
+        }
+
+        // --- LOAD SAMPLE DATA (UNTUK TESTING) ---
+        function loadSampleData() {
+            if (confirm("Data saat ini akan ditimpa dengan Data Sample fiktif untuk keperluan testing. Lanjutkan?")) {
+                const sampleInfo = {
+                    nama: "SDN Percontohan 01",
+                    npsn: "20101234",
+                    inspektur: "Budi Santoso (Tester)"
+                };
+
+                // Membuat simulasi waktu mundur
+                const now = new Date();
+                const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000)).toISOString();
+                const oneDayAgo = new Date(now.getTime() - (1 * 24 * 60 * 60 * 1000)).toISOString();
+                const twoHoursAgo = new Date(now.getTime() - (2 * 60 * 60 * 1000)).toISOString();
+
+                const sampleReports = [
+                    {
+                        id: 1001,
+                        timestamp: threeDaysAgo,
+                        kategori: "sarpras",
+                        objek: "TV LED Bantuan Pemerintah Pusat",
+                        qtyBaik: 5,
+                        qtyRusak: 0,
+                        catatan: "Barang baru tiba dari dinas, kondisi masih segel pabrik.",
+                        foto: ""
+                    },
+                    {
+                        id: 1002,
+                        timestamp: oneDayAgo,
+                        kategori: "bangunan",
+                        objek: "Gedung Kelas 1A",
+                        kondisi: "Aman",
+                        catatan: "Kondisi tembok dan atap aman terkendali saat inspeksi rutin mingguan.",
+                        geojson: null,
+                        foto: ""
+                    },
+                    {
+                        id: 1003,
+                        timestamp: twoHoursAgo,
+                        kategori: "sarpras",
+                        objek: "TV LED Bantuan Pemerintah Pusat",
+                        qtyBaik: 4,
+                        qtyRusak: 1,
+                        catatan: "Satu unit layarnya retak/pecah karena tersenggol siswa saat jam istirahat. Segera butuh perbaikan.",
+                        foto: ""
+                    },
+                    {
+                        id: 1004,
+                        timestamp: now.toISOString(),
+                        kategori: "bangunan",
+                        objek: "Gedung Kelas 1A",
+                        kondisi: "Rusak Sedang",
+                        catatan: "Plafon sudut kanan depan jebol karena hujan badai semalam, air menggenangi area papan tulis.",
+                        geojson: null,
+                        foto: ""
+                    }
+                ];
+
+                localStorage.setItem('sekolah_info', JSON.stringify(sampleInfo));
+                localStorage.setItem('sekolah_reports', JSON.stringify(sampleReports));
+
+                alert("Data Sample berhasil dimuat! Anda dapat mengecek Tab Pemantauan.");
+                location.reload();
+            }
         }
 
         // TRIASE KALKULATOR
