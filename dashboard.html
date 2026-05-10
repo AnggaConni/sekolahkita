@@ -624,16 +624,17 @@
         function getDirectImageUrl(url) {
             if (!url) return "";
             
-            // Cek apakah ini link Google Drive
-            if (url.includes('drive.google.com/file/d/')) {
-                // Gunakan Regex untuk mengambil ID File
-                const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if (match && match[1]) {
-                    // Kembalikan format link direct download/view Google Drive
-                    return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-                }
+            // Deteksi ID file dari berbagai format link GDrive
+            const driveFileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            const driveQueryIdMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+            if (driveFileIdMatch && driveFileIdMatch[1]) {
+                return `https://drive.google.com/uc?export=view&id=${driveFileIdMatch[1]}`;
+            } else if (driveQueryIdMatch && driveQueryIdMatch[1]) {
+                return `https://drive.google.com/uc?export=view&id=${driveQueryIdMatch[1]}`;
             }
-            // Jika link biasa (Wikipedia, Unsplash, dll), kembalikan apa adanya
+            
+            // Jika link biasa (Wikimedia, Direct Link, dll), kembalikan apa adanya
             return url;
         }
 
@@ -740,8 +741,10 @@
                 jsonStr = jsonParts.join(""); // Gabungkan seluruh bagian menjadi 1 string utuh
 
                 if (jsonStr) {
+
                     try {
-                        const payloads = JSON.parse(jsonStr);
+                        // Menggunakan new Function agar bisa membaca JSON tanpa double-quote
+                        const payloads = (new Function("return " + jsonStr))();
                         let namaSekolah = "Sekolah Tidak Diketahui";
                         let npsn = "NPSN_XXX";
                         let inspektur = "-";
@@ -763,9 +766,12 @@
                             if (kLow.includes("provinsi") && val !== "") provinsi = val;
                         }
 
+
                         payloads.forEach(item => {
-                            if (!processedIds.has(item.id)) {
-                                processedIds.add(item.id);
+                            // Membuat unique key gabungan dari NPSN, ID, dan Timestamp agar ID tidak bentrok antar sekolah
+                            const uniqueKey = npsn + "_" + item.id + "_" + item.timestamp;
+                            if (!processedIds.has(uniqueKey)) {
+                                processedIds.add(uniqueKey);
                                 
                                 item.namaSekolah = namaSekolah;
                                 item.npsn = npsn;
@@ -1298,12 +1304,16 @@ historyAsc.forEach((r, idx) => {
                 const dDate = new Date(r.timestamp).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                 const dTime = new Date(r.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
 
+
                 // --- TAMBAHAN LOGIKA TOMBOL FOTO ---
                 let fotoBtnHtml = '';
-                // Pastikan properti "foto" ada di JSON dan tidak kosong
-                if (r.foto && r.foto.trim() !== '') {
+                // Cek beberapa variasi nama properti foto agar lebih aman
+                const fotoUrl = r.foto || r.Foto || r.gambar || r.image || r.Image || '';
+                
+                if (fotoUrl && String(fotoUrl).trim() !== '') {
                     // Escape quote agar tidak error saat diklik
-                    const safeUrl = r.foto.trim().replace(/'/g, "\\'");
+                    const safeUrl = String(fotoUrl).trim().replace(/'/g, "\\'");
+
                     fotoBtnHtml = `
                     <button onclick="showImageModal('${safeUrl}')" class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white flex items-center justify-center shrink-0 border border-blue-200 transition-colors shadow-sm" title="Lihat Foto Bukti">
                         <i class="ph-bold ph-image text-sm"></i>
@@ -1339,7 +1349,7 @@ historyAsc.forEach((r, idx) => {
                     </div>
                 </div>`;
             });
-            
+
             tlHTML += '</div>';
             document.getElementById('tl-history-list').innerHTML = tlHTML; 
             document.getElementById('tl-history-list-mobile').innerHTML = tlHTML;
