@@ -584,6 +584,22 @@
 
         </section>
 
+        <div id="image-modal" class="fixed inset-0 z-[300] hidden flex-col justify-center items-center bg-slate-900/90 backdrop-blur-sm p-4 transition-opacity">
+        <div class="relative max-w-4xl w-full flex flex-col items-center">
+            <button onclick="closeImageModal()" class="absolute -top-12 right-0 md:-right-10 w-10 h-10 bg-white/20 hover:bg-white/40 rounded-full text-white flex items-center justify-center backdrop-blur transition">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+            
+            <img id="modal-image-content" src="" alt="Bukti Foto" class="max-w-full max-h-[80vh] rounded-xl shadow-2xl object-contain fade-in">
+            
+            <div class="mt-4 text-center bg-slate-800/50 backdrop-blur px-4 py-2 rounded-lg">
+                <a id="modal-image-link" href="#" target="_blank" class="text-xs font-bold text-slate-300 hover:text-white transition flex items-center gap-2">
+                    <i class="ph-bold ph-arrow-square-out"></i> Buka Link Asli di Tab Baru
+                </a>
+            </div>
+        </div>
+    </div>
+
     </main>
 
     <!-- JS LOGIC -->
@@ -603,6 +619,47 @@
 
         const NAV_ACTIVE = "nav-btn w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all gradient-blue text-white shadow-lg shadow-blue-500/30";
         const NAV_INACTIVE = "nav-btn w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all text-slate-600 hover:bg-blue-50 hover:text-blue-600";
+
+        // Fungsi untuk mengubah link GDrive Viewer menjadi GDrive Direct Image
+        function getDirectImageUrl(url) {
+            if (!url) return "";
+            
+            // Cek apakah ini link Google Drive
+            if (url.includes('drive.google.com/file/d/')) {
+                // Gunakan Regex untuk mengambil ID File
+                const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    // Kembalikan format link direct download/view Google Drive
+                    return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                }
+            }
+            // Jika link biasa (Wikipedia, Unsplash, dll), kembalikan apa adanya
+            return url;
+        }
+
+        // Fungsi Buka Modal Gambar
+        function showImageModal(originalUrl) {
+            const modal = document.getElementById('image-modal');
+            const imgEl = document.getElementById('modal-image-content');
+            const linkEl = document.getElementById('modal-image-link');
+            
+            // Konversi URL jika itu dari Google Drive
+            const directUrl = getDirectImageUrl(originalUrl);
+            
+            imgEl.src = directUrl;
+            linkEl.href = originalUrl; // Tetap gunakan link asli untuk tombol buka di tab baru
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        // Fungsi Tutup Modal Gambar
+        function closeImageModal() {
+            const modal = document.getElementById('image-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('modal-image-content').src = ""; // Bersihkan memori gambar
+        }
 
         window.onload = () => {
             // Initialize nav state
@@ -1228,7 +1285,8 @@
 
             const historyAsc = [...obj.history].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
             let tlHTML = '<div class="p-5">';
-            historyAsc.forEach((r, idx) => {
+
+historyAsc.forEach((r, idx) => {
                 const isLatest = idx === 0;
                 let tagStr = ''; let clr = '';
                 if(isBg) {
@@ -1240,6 +1298,19 @@
                 const dDate = new Date(r.timestamp).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                 const dTime = new Date(r.timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
 
+                // --- TAMBAHAN LOGIKA TOMBOL FOTO ---
+                let fotoBtnHtml = '';
+                // Pastikan properti "foto" ada di JSON dan tidak kosong
+                if (r.foto && r.foto.trim() !== '') {
+                    // Escape quote agar tidak error saat diklik
+                    const safeUrl = r.foto.trim().replace(/'/g, "\\'");
+                    fotoBtnHtml = `
+                    <button onclick="showImageModal('${safeUrl}')" class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white flex items-center justify-center shrink-0 border border-blue-200 transition-colors shadow-sm" title="Lihat Foto Bukti">
+                        <i class="ph-bold ph-image text-sm"></i>
+                    </button>`;
+                }
+                // ------------------------------------
+
                 tlHTML += `
                 <div class="timeline-item relative pl-12 pb-6 fade-in">
                     <div class="timeline-line"></div>
@@ -1248,6 +1319,7 @@
                     </div>
                     <div class="bg-white border ${isLatest ? 'border-blue-200 shadow-md ring-1 ring-blue-100' : 'border-slate-200'} p-4 rounded-2xl">
                         ${isLatest ? '<div class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black uppercase rounded mb-2">Terbaru</div>' : ''}
+                        
                         <div class="flex justify-between items-start mb-2 pb-2 border-b border-slate-100">
                             <div>
                                 <p class="text-sm font-black text-slate-800">${dDate}</p>
@@ -1256,12 +1328,18 @@
                                     <i class="ph-bold ph-user"></i> ${r.inspektur}
                                 </p>
                             </div>
-                            <span class="status-pill bg-${clr}-50 text-${clr}-700 border border-${clr}-200 shrink-0">${tagStr}</span>
+                            
+                            <div class="flex items-center gap-2">
+                                ${fotoBtnHtml}
+                                <span class="status-pill bg-${clr}-50 text-${clr}-700 border border-${clr}-200 shrink-0">${tagStr}</span>
+                            </div>
                         </div>
+
                         <p class="text-sm text-slate-700 leading-relaxed italic">"${r.catatan}"</p>
                     </div>
                 </div>`;
             });
+            
             tlHTML += '</div>';
             document.getElementById('tl-history-list').innerHTML = tlHTML; 
             document.getElementById('tl-history-list-mobile').innerHTML = tlHTML;
