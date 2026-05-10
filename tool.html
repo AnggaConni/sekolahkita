@@ -50,21 +50,34 @@
                 <p class="text-sm text-slate-500 mt-1">Satu aplikasi ini akan dikunci untuk satu sekolah.</p>
             </div>
             <div class="space-y-4">
+
                 <div>
                     <label class="text-xs font-bold text-slate-500 uppercase">Nama Sekolah</label>
                     <input type="text" id="setup-nama-sekolah" placeholder="Misal: SMPN 275 Halim" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Provinsi</label>
+                    <select id="setup-provinsi" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="" disabled selected>Pilih Provinsi</option>
+                        <option value="Aceh">Aceh</option><option value="Bali">Bali</option><option value="Banten">Banten</option><option value="Bengkulu">Bengkulu</option><option value="DKI Jakarta">DKI Jakarta</option><option value="Daerah Istimewa Yogyakarta">Daerah Istimewa Yogyakarta</option><option value="Gorontalo">Gorontalo</option><option value="Jambi">Jambi</option><option value="Jawa Barat">Jawa Barat</option><option value="Jawa Tengah">Jawa Tengah</option><option value="Jawa Timur">Jawa Timur</option><option value="Kalimantan Barat">Kalimantan Barat</option><option value="Kalimantan Selatan">Kalimantan Selatan</option><option value="Kalimantan Tengah">Kalimantan Tengah</option><option value="Kalimantan Timur">Kalimantan Timur</option><option value="Kalimantan Utara">Kalimantan Utara</option><option value="Kepulauan Bangka Belitung">Kepulauan Bangka Belitung</option><option value="Kepulauan Riau">Kepulauan Riau</option><option value="Lampung">Lampung</option><option value="Maluku">Maluku</option><option value="Maluku Utara">Maluku Utara</option><option value="Nusa Tenggara Barat">Nusa Tenggara Barat</option><option value="Nusa Tenggara Timur">Nusa Tenggara Timur</option><option value="Papua">Papua</option><option value="Papua Barat">Papua Barat</option><option value="Papua Barat Daya">Papua Barat Daya</option><option value="Papua Pegunungan">Papua Pegunungan</option><option value="Papua Selatan">Papua Selatan</option><option value="Papua Tengah">Papua Tengah</option><option value="Riau">Riau</option><option value="Sulawesi Barat">Sulawesi Barat</option><option value="Sulawesi Selatan">Sulawesi Selatan</option><option value="Sulawesi Tengah">Sulawesi Tengah</option><option value="Sulawesi Tenggara">Sulawesi Tenggara</option><option value="Sulawesi Utara">Sulawesi Utara</option><option value="Sumatera Barat">Sumatera Barat</option><option value="Sumatera Selatan">Sumatera Selatan</option><option value="Sumatera Utara">Sumatera Utara</option>
+                    </select>
+                </div>
+
                 <div>
                     <label class="text-xs font-bold text-slate-500 uppercase">NPSN / Kode Sekolah</label>
                     <input type="number" id="setup-npsn" placeholder="Misal: 20101234" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
+
                 <div>
                     <label class="text-xs font-bold text-slate-500 uppercase">Nama Inspektur (Anda)</label>
                     <input type="text" id="setup-nama-inspektur" placeholder="Nama Lengkap" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
+
                 <button onclick="saveSetup()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors mt-2">
                     Simpan Profil Sekolah
                 </button>
+
             </div>
         </div>
     </div>
@@ -487,16 +500,14 @@
         // MEMBUKA MODAL SETUP (Edit Profil)
         function openEditSetup() {
             if (schoolInfo) {
-                // Isi form dengan data lama yang sudah ada di localStorage
                 document.getElementById('setup-nama-sekolah').value = schoolInfo.nama || '';
                 document.getElementById('setup-npsn').value = schoolInfo.npsn || '';
                 document.getElementById('setup-nama-inspektur').value = schoolInfo.inspektur || '';
+                document.getElementById('setup-provinsi').value = schoolInfo.provinsi || ''; // TAMBAHAN PROVINSI
                 
-                // Tampilkan tombol "Close (X)" karena ini cuma mode Edit
                 document.getElementById('btn-close-setup').classList.remove('hidden');
                 document.getElementById('setup-title').innerText = "Edit Profil Sekolah";
             } else {
-                // Sembunyikan tombol "Close (X)" kalau belum pernah isi setup sama sekali
                 document.getElementById('btn-close-setup').classList.add('hidden');
                 document.getElementById('setup-title').innerText = "Konfigurasi Sekolah";
             }
@@ -505,22 +516,15 @@
             document.getElementById('modal-setup').classList.add('flex');
         }
 
-        // MENUTUP MODAL SETUP (Batal Edit)
-        function closeSetup() {
-            document.getElementById('modal-setup').classList.add('hidden');
-            document.getElementById('modal-setup').classList.remove('flex');
-        }
-
-        // MENYIMPAN SETUP
         function saveSetup() {
             const nama = document.getElementById('setup-nama-sekolah').value;
             const npsn = document.getElementById('setup-npsn').value;
             const inspektur = document.getElementById('setup-nama-inspektur').value;
+            const provinsi = document.getElementById('setup-provinsi').value; // TAMBAHAN PROVINSI
 
-            if(!nama || !npsn || !inspektur) return alert("Semua kolom wajib diisi!");
+            if(!nama || !npsn || !inspektur || !provinsi) return alert("Semua kolom wajib diisi!");
             
-            // Simpan tanpa menghapus data laporan (laporan tetap utuh)
-            schoolInfo = { nama, npsn, inspektur };
+            schoolInfo = { nama, npsn, inspektur, provinsi }; // TAMBAHAN PROVINSI
             localStorage.setItem('sekolah_info', JSON.stringify(schoolInfo));
             
             closeSetup();
@@ -1190,7 +1194,7 @@
             btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Menghubungkan API...'; 
             btn.disabled = true;
 
-            try {
+try {
                 // Payload tanpa foto (Data teknis & koordinat saja agar ringan)
                 const payloadSafe = reports.map(r => { 
                     const rCopy = {...r}; 
@@ -1198,12 +1202,29 @@
                     return rCopy; 
                 });
 
+                // 1. Ubah ke String
+                const jsonString = JSON.stringify(payloadSafe);
+
+                // 2. Logika membelah diri menjadi 3 bagian (Maksimal per cell GSheets diset batas aman 40.000 karakter)
+                const CHUNK_SIZE = 40000;
+                const part1 = jsonString.substring(0, CHUNK_SIZE);
+                const part2 = jsonString.substring(CHUNK_SIZE, CHUNK_SIZE * 2);
+                const part3 = jsonString.substring(CHUNK_SIZE * 2);
+
+                if (jsonString.length > CHUNK_SIZE * 3) {
+                    console.warn("Peringatan: Data sangat besar, sebagian teks mungkin terpotong di form JSON ke-3.");
+                }
+
                 const formData = new URLSearchParams();
-                // ID Entry sesuai form yang Anda berikan
+                
+                // MAPPING ENTRY BERDASARKAN URL ANDA:
                 formData.append('entry.1347795599', schoolInfo.nama);
+                formData.append('entry.1966222058', schoolInfo.provinsi); // FORM BARU: Provinsi
                 formData.append('entry.1547462533', schoolInfo.npsn);
                 formData.append('entry.1695999318', schoolInfo.inspektur);
-                formData.append('entry.598227848', JSON.stringify(payloadSafe));
+                formData.append('entry.598227848', part1); // FORM BARU: JSON Kolom 1
+                formData.append('entry.2131421782', part2); // FORM BARU: JSON Kolom 2
+                formData.append('entry.1283761055', part3); // FORM BARU: JSON Kolom 3
 
                 // Pengiriman ke Google Form API
                 await fetch(url, {
@@ -1415,57 +1436,95 @@ function generatePDF() {
                 const sampleInfo = {
                     nama: "SMPN 275 Halim, Jakarta",
                     npsn: "20101234",
-                    inspektur: "Tim BPBD / Damkar"
+                    inspektur: "Tim BPBD / Damkar",
+                    provinsi: "DKI Jakarta"
                 };
 
                 const now = new Date();
+                const oneWeekAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)).toISOString();
+                const fiveDaysAgo = new Date(now.getTime() - (5 * 24 * 60 * 60 * 1000)).toISOString();
                 const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000)).toISOString();
                 const oneDayAgo = new Date(now.getTime() - (1 * 24 * 60 * 60 * 1000)).toISOString();
                 const twoHoursAgo = new Date(now.getTime() - (2 * 60 * 60 * 1000)).toISOString();
 
-                // GeoJSON Dummy Gedung Utama Sesuai Request (Poligon Luas / Halaman)
-                const geoHalimGedungUtama = {
-                    "type": "Feature",
-                    "properties": {},
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [106.882, -6.262],
-                            [106.8825, -6.262],
-                            [106.8825, -6.2625],
-                            [106.882, -6.2625],
-                            [106.882, -6.262]
-                        ]]
-                    }
-                };
-
+                // --- DATA KOORDINAT (GEOJSON) ---
+                // 1. Gedung Utama
+                const geoHalimGedungUtama = {"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[106.882,-6.262],[106.8825,-6.262],[106.8825,-6.2625],[106.882,-6.2625],[106.882,-6.262]]]}};
+                // 2. Kelas 1A
                 const geoHalimKelas1A = {"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[106.8826,-6.2626],[106.8830,-6.2626],[106.8830,-6.2630],[106.8826,-6.2630],[106.8826,-6.2626]]]}};
+                // 3. Laboratorium Komputer (Baru)
+                const geoLabKomputer = {"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[106.8826,-6.2620],[106.8830,-6.2620],[106.8830,-6.2624],[106.8826,-6.2624],[106.8826,-6.2620]]]}};
+                // 4. Perpustakaan (Baru)
+                const geoPerpustakaan = {"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[106.8815,-6.2625],[106.8819,-6.2625],[106.8819,-6.2630],[106.8815,-6.2630],[106.8815,-6.2625]]]}};
+                
+                // Titik Aset
                 const geoTitikTV = {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[106.88225, -6.26225]}};
+                const geoTitikServer = {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[106.8828, -6.2622]}};
+                const geoTitikRakBuku = {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[106.8817, -6.2627]}};
 
-                // Sample Data memiliki foto dari web external (Wikipedia/Unsplash) sebagai demonstrasi fitur Link URL.
+                // --- DAFTAR LAPORAN HISTORIS ---
                 const sampleReports = [
+                    // === SARPRAS: TV LED ===
                     {
-                        id: 1001, timestamp: threeDaysAgo, kategori: "sarpras", objek: "TV LED Bantuan Pusat",
+                        id: 1001, timestamp: fiveDaysAgo, kategori: "sarpras", objek: "TV LED Bantuan Pusat",
                         qtyBaik: 5, qtyRusak: 0, catatan: "Barang baru tiba dari dinas, segel pabrik.", geojson: geoTitikTV, 
                         foto: "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=400&q=80"
                     },
                     {
-                        id: 1003, timestamp: twoHoursAgo, kategori: "sarpras", objek: "TV LED Bantuan Pusat",
+                        id: 1002, timestamp: twoHoursAgo, kategori: "sarpras", objek: "TV LED Bantuan Pusat",
                         qtyBaik: 4, qtyRusak: 1, catatan: "Satu layar retak karena tersenggol siswa saat istirahat.", geojson: geoTitikTV, 
-                        foto: "" // Sengaja dikosongkan agar bervariasi
+                        foto: "" 
                     },
+                    
+                    // === BANGUNAN: GEDUNG UTAMA ===
                     {
-                        id: 1005, timestamp: threeDaysAgo, kategori: "bangunan", objek: "Gedung Utama Terpadu", // Diganti menjadi Gedung Utama Terpadu (luas)
+                        id: 1003, timestamp: oneWeekAgo, kategori: "bangunan", objek: "Gedung Utama Terpadu", 
                         kondisi: "Aman", catatan: "Inspeksi awal gedung utama dan halaman lapangan upacara pasca renovasi.", geojson: geoHalimGedungUtama, 
                         foto: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=400&q=80"
                     },
+
+                    // === BANGUNAN: KELAS 1A (Ada historis kerusakan) ===
                     {
-                        id: 1002, timestamp: oneDayAgo, kategori: "bangunan", objek: "Gedung Kelas 1A",
+                        id: 1004, timestamp: threeDaysAgo, kategori: "bangunan", objek: "Gedung Kelas 1A",
                         kondisi: "Aman", catatan: "Kondisi tembok dan atap aman terkendali saat inspeksi rutin.", geojson: geoHalimKelas1A, foto: ""
                     },
                     {
-                        id: 1004, timestamp: now.toISOString(), kategori: "bangunan", objek: "Gedung Kelas 1A",
-                        kondisi: "Rusak Sedang", catatan: "Plafon sudut jebol karena hujan badai semalam, air menggenang.", geojson: geoHalimKelas1A, foto: ""
+                        id: 1005, timestamp: now.toISOString(), kategori: "bangunan", objek: "Gedung Kelas 1A",
+                        kondisi: "Rusak Sedang", catatan: "Plafon sudut jebol karena hujan badai semalam, air menggenang.", geojson: geoHalimKelas1A, 
+                        foto: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=400&q=80" // Foto ilustrasi atap rusak
+                    },
+
+                    // === BANGUNAN: LAB KOMPUTER ===
+                    {
+                        id: 1006, timestamp: oneDayAgo, kategori: "bangunan", objek: "Laboratorium Komputer",
+                        kondisi: "Rusak Ringan", catatan: "Ada rembesan air di dekat jendela timur, cat mulai mengelupas.", geojson: geoLabKomputer, 
+                        foto: ""
+                    },
+
+                    // === SARPRAS: SERVER RACK ===
+                    {
+                        id: 1007, timestamp: oneWeekAgo, kategori: "sarpras", objek: "Rak Server Induk",
+                        qtyBaik: 2, qtyRusak: 0, catatan: "Semua server menyala normal, suhu ruangan stabil 20 derajat.", geojson: geoTitikServer, 
+                        foto: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=400&q=80"
+                    },
+                    {
+                        id: 1008, timestamp: oneDayAgo, kategori: "sarpras", objek: "Rak Server Induk",
+                        qtyBaik: 1, qtyRusak: 1, catatan: "UPS pada server 2 terbakar karena tegangan listrik tidak stabil semalam.", geojson: geoTitikServer, 
+                        foto: ""
+                    },
+
+                    // === BANGUNAN: PERPUSTAKAAN (Kritis) ===
+                    {
+                        id: 1009, timestamp: twoHoursAgo, kategori: "bangunan", objek: "Gedung Perpustakaan Lama",
+                        kondisi: "Rusak Berat", catatan: "Kuda-kuda atap lapuk dimakan rayap. Terdengar suara retakan kayu. Ruangan telah dikosongkan!", geojson: geoPerpustakaan, 
+                        foto: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80"
+                    },
+
+                    // === SARPRAS: RAK BUKU ===
+                    {
+                        id: 1010, timestamp: threeDaysAgo, kategori: "sarpras", objek: "Rak Buku Kayu Jati",
+                        qtyBaik: 15, qtyRusak: 5, catatan: "5 rak di bagian belakang mulai keropos terkena rayap dari dinding.", geojson: geoTitikRakBuku, 
+                        foto: ""
                     }
                 ];
 
