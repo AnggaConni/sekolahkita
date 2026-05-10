@@ -1194,11 +1194,17 @@
             btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Menghubungkan API...'; 
             btn.disabled = true;
 
-try {
+
+            try {
                 // Payload tanpa foto (Data teknis & koordinat saja agar ringan)
+// Payload dengan filter foto (Base64 diubah ke teks, URL Web/GDrive dipertahankan)
                 const payloadSafe = reports.map(r => { 
                     const rCopy = {...r}; 
-                    delete rCopy.foto; 
+                    if (rCopy.foto && rCopy.foto.startsWith('data:image')) {
+                        // Jika foto adalah hasil jepretan kamera/base64 lokal, ganti teksnya
+                        rCopy.foto = "[Gambar Base64 Hanya Tersimpan di Lokal]";
+                    }
+                    // Jika rCopy.foto berawalan 'http' (GDrive/Web), maka dibiarkan apa adanya dan ikut terkirim.
                     return rCopy; 
                 });
 
