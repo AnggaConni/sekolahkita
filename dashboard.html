@@ -384,9 +384,16 @@
                                     <p class="text-xs text-slate-500">Visualisasi geografis kondisi objek</p>
                                 </div>
                             </div>
-                            <select id="filter-sekolah-global" onchange="filterDataGlobal()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="ALL">🌐 Semua Sekolah</option>
-                            </select>
+
+                            <div class="flex items-center gap-2">
+                                <select id="filter-provinsi-global" onchange="filterDataGlobal()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="ALL">🗺️ Semua Provinsi</option>
+                                </select>
+                                <select id="filter-sekolah-global" onchange="filterDataGlobal()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="ALL">🌐 Semua Sekolah</option>
+                                </select>
+                            </div>
+
                         </div>
                         <div id="global-map" class="w-full flex-1 relative z-0"></div>
                     </div>
@@ -472,11 +479,15 @@
                         
                         <!-- Filter Bar -->
                         <div class="p-4 md:p-5 border-b border-slate-200 bg-white shrink-0">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
                                 <div class="relative lg:col-span-1">
                                     <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                                     <input type="text" id="filter-text" oninput="renderSarprasTable()" placeholder="Cari objek..." class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition">
                                 </div>
+
+                                <select id="filter-provinsi-sarpras" onchange="renderSarprasTable()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                                    <option value="ALL">🗺️ Semua Provinsi</option>
+                                </select>
                                 <select id="filter-sekolah-sarpras" onchange="renderSarprasTable()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
                                     <option value="ALL">🏫 Semua Sekolah</option>
                                 </select>
@@ -647,13 +658,29 @@
             const processedIds = new Set();
 
             rows.forEach(row => {
-                let jsonStr = null;
+                let jsonStr = "";
+                let isGathering = false;
+                let jsonParts = [];
+
+                // ALGORITMA PENYATU JSON (Mendukung 1 hingga N kolom yang terpecah)
                 for (let key in row) {
-                    if (row[key] && row[key].trim().startsWith("[{") && row[key].trim().endsWith("}]")) {
-                        jsonStr = row[key].trim();
-                        break;
+                    let val = String(row[key] || "");
+                    let valTrimmed = val.trim();
+                    
+                    if (valTrimmed.startsWith("[{")) {
+                        isGathering = true;
+                        jsonParts = []; // Reset jika menemukan awal array baru
+                    }
+                    
+                    if (isGathering) {
+                        jsonParts.push(val); // Masukkan bagian string ini
+                        if (valTrimmed.endsWith("}]")) {
+                            isGathering = false; // Stop jika sudah ketemu ekornya
+                        }
                     }
                 }
+                
+                jsonStr = jsonParts.join(""); // Gabungkan seluruh bagian menjadi 1 string utuh
 
                 if (jsonStr) {
                     try {
@@ -661,38 +688,23 @@
                         let namaSekolah = "Sekolah Tidak Diketahui";
                         let npsn = "NPSN_XXX";
                         let inspektur = "-";
+                        let provinsi = "Tidak Diketahui";
 
+                        // EKSTRAK DATA DARI GOOGLE FORM (Termasuk Provinsi)
                         for (let key in row) {
                             const kLow = key.toLowerCase();
-                            if (kLow.includes("sekolah") && !kLow.includes("npsn") && !kLow.includes("kode")) namaSekolah = row[key];
-                            if (kLow.includes("npsn") || kLow.includes("kode")) npsn = row[key];
-                            if ((kLow.includes("inspektur") || kLow.includes("nama")) && !kLow.includes("sekolah")) inspektur = row[key];
+                            let val = row[key] ? String(row[key]).trim() : "";
+
+                            if (kLow.includes("sekolah") && !kLow.includes("npsn") && !kLow.includes("kode") && val !== "") namaSekolah = val;
+                            if ((kLow.includes("npsn") || kLow.includes("kode")) && val !== "") {
+                                if (/^\d+$/.test(val)) npsn = val;
+                            }
+                            if ((kLow.includes("inspektur") || kLow.includes("nama") || kLow === "npsn") && !kLow.includes("sekolah") && val !== "") {
+                                if (!/^\d+$/.test(val) && val !== "Data Terenkapsulasi") inspektur = val;
+                            }
+                            // Tangkap nama Provinsi jika ada di header kolom
+                            if (kLow.includes("provinsi") && val !== "") provinsi = val;
                         }
-
-
-                        for (let key in row) {
-                            const kLow = key.toLowerCase();
-                            let val = row[key] ? String(row[key]).trim() : "";
-
-                            // 1. Set Nama Sekolah
-                            if (kLow.includes("sekolah") && !kLow.includes("npsn") && !kLow.includes("kode") && val !== "") {
-                                namaSekolah = val;
-                            }
-                            
-                            // 2. Set NPSN (Validasi Regex: HANYA izinkan angka masuk)
-                            if ((kLow.includes("npsn") || kLow.includes("kode")) && val !== "") {
-                                if (/^\d+$/.test(val)) { 
-                                    npsn = val; // Mengabaikan Kolom D yang isinya huruf
-                                }
-                            }
-
-                            // 3. Set Inspektur (Ambil dari kolom nama/inspektur, ATAU jika ada di NPSN yang isinya huruf)
-                            if ((kLow.includes("inspektur") || kLow.includes("nama") || kLow === "npsn") && !kLow.includes("sekolah") && val !== "") {
-                                if (!/^\d+$/.test(val) && val !== "Data Terenkapsulasi") {
-                                    inspektur = val;
-                                }
-                            }
-                        }
 
                         payloads.forEach(item => {
                             if (!processedIds.has(item.id)) {
@@ -701,9 +713,10 @@
                                 item.namaSekolah = namaSekolah;
                                 item.npsn = npsn;
                                 item.inspektur = inspektur;
+                                item.provinsi = provinsi; // Simpan provinsi ke item
                                 allReports.push(item);
 
-                                if (!groupedData[npsn]) groupedData[npsn] = { namaSekolah, npsn, inspektur, objek: {} };
+                                if (!groupedData[npsn]) groupedData[npsn] = { namaSekolah, npsn, inspektur, provinsi, objek: {} };
                                 
                                 const objKey = item.objek.trim().toLowerCase();
                                 if (!groupedData[npsn].objek[objKey]) {
@@ -717,6 +730,7 @@
                 }
             });
 
+            // Proses Flatten Object untuk mempermudah render tabel
             for (let npsn in groupedData) {
                 for (let objKey in groupedData[npsn].objek) {
                     groupedData[npsn].objek[objKey].history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -739,6 +753,7 @@
                     flatObjects.push({
                         npsn: npsn,
                         namaSekolah: groupedData[npsn].namaSekolah,
+                        provinsi: groupedData[npsn].provinsi, // Simpan provinsi ke flat object
                         namaObjek: groupedData[npsn].objek[objKey].originalName,
                         kategori: groupedData[npsn].objek[objKey].kategori,
                         latestTimestamp: latest.timestamp,
@@ -767,20 +782,34 @@
             }, 500);
         }
 
+
         function populateFilter() {
+            const selectProvGlobal = document.getElementById('filter-provinsi-global');
+            const selectProvSarpras = document.getElementById('filter-provinsi-sarpras');
             const selectGlobal = document.getElementById('filter-sekolah-global');
             const selectSarpras = document.getElementById('filter-sekolah-sarpras');
             const selectAuditor = document.getElementById('filter-auditor');
             const selectJenis = document.getElementById('filter-jenis');
             
+            const uniqueProvinsi = new Set();
             let optionsGlobal = '<option value="ALL">🌐 Semua Sekolah</option>';
             let optionsSarpras = '<option value="ALL">🏫 Semua Sekolah</option>';
+            
             Object.values(groupedData).forEach(sekolah => {
+                if(sekolah.provinsi) uniqueProvinsi.add(sekolah.provinsi);
                 optionsGlobal += `<option value="${sekolah.npsn}">${sekolah.namaSekolah}</option>`;
                 optionsSarpras += `<option value="${sekolah.npsn}">${sekolah.namaSekolah}</option>`;
             });
+            
             selectGlobal.innerHTML = optionsGlobal;
             selectSarpras.innerHTML = optionsSarpras;
+
+            let optionsProv = '<option value="ALL">🗺️ Semua Provinsi</option>';
+            Array.from(uniqueProvinsi).sort().forEach(prov => {
+                optionsProv += `<option value="${prov}">${prov}</option>`;
+            });
+            selectProvGlobal.innerHTML = optionsProv;
+            selectProvSarpras.innerHTML = optionsProv;
 
             const uniqueAuditors = new Set();
             const uniqueJenis = new Set();
@@ -827,19 +856,24 @@
         }
 
         function filterDataGlobal() {
+            const selectedProv = document.getElementById('filter-provinsi-global').value;
             const selectedNPSN = document.getElementById('filter-sekolah-global').value;
             
-            let totalSekolah = Object.keys(groupedData).length;
-            let totalObjek = 0; let totalKritis = 0; let totalLogs = allReports.length;
+            let totalSekolah = 0; 
+            let totalObjek = 0; let totalKritis = 0; let totalLogs = 0;
             let totalAman = 0; let totalRingan = 0; let totalSedang = 0; let totalBerat = 0;
 
             mapLayer.clearLayers();
-
+            
             // Track per-sekolah stats for "Top issues"
             const sekolahStats = {};
 
             Object.values(groupedData).forEach(sekolah => {
+                // SKIP jika tidak sesuai filter Provinsi atau NPSN
+                if (selectedProv !== 'ALL' && sekolah.provinsi !== selectedProv) return;
                 if (selectedNPSN !== 'ALL' && sekolah.npsn !== selectedNPSN) return;
+                
+                totalSekolah++; // Hitung jumlah sekolah yang lolos filter
 
                 let sekolahObjekCount = Object.keys(sekolah.objek).length;
                 totalObjek += sekolahObjekCount;
@@ -847,6 +881,8 @@
                 let stats = { aman: 0, rusak: 0, kritis: 0, total: sekolahObjekCount };
 
                 Object.values(sekolah.objek).forEach(obj => {
+                    totalLogs += obj.history.length; // Hitung log hanya untuk sekolah yang terfilter
+
                     const latest = obj.history[obj.history.length - 1];
                     const isBg = obj.kategori === 'bangunan';
                     let clr = 'blue'; let tagStr = ''; let statusKey = 'Aman';
@@ -888,32 +924,28 @@
                 sekolahStats[sekolah.npsn] = { ...stats, namaSekolah: sekolah.namaSekolah };
             });
 
-            if (selectedNPSN !== 'ALL') {
-                totalSekolah = 1; 
-                totalLogs = Object.values(groupedData[selectedNPSN].objek).reduce((sum, o) => sum + o.history.length, 0);
-            }
-
+            // Update DOM Elements untuk metrik utama
             document.getElementById('stat-sekolah').innerText = totalSekolah;
             document.getElementById('stat-objek').innerText = totalObjek;
             document.getElementById('stat-kritis').innerText = totalKritis;
             document.getElementById('stat-logs').innerText = totalLogs;
 
-            // Update sidebar mini stats
-            document.getElementById('mini-stat-sekolah').innerText = Object.keys(groupedData).length;
+            // Update sidebar mini stats agar menyesuaikan dengan filter saat ini
+            document.getElementById('mini-stat-sekolah').innerText = totalSekolah; 
             document.getElementById('mini-stat-aman').innerText = totalAman;
             document.getElementById('mini-stat-rusak').innerText = totalRingan + totalSedang + totalBerat;
 
-            // Distribution Bars
+            // Render ulang komponen lainnya
             renderDistribution(totalAman, totalRingan, totalSedang, totalBerat);
-
-            // Top Sekolah
             renderTopSekolah(sekolahStats);
-
-            // Recent Activity
             renderRecentActivity();
 
-            if (mapLayer.getLayers().length > 0) map.fitBounds(L.featureGroup(mapLayer.getLayers()).getBounds(), { padding: [40, 40], maxZoom: 18 });
-            else map.setView([-0.789, 113.921], 5);
+            // Zoom map ke area marker yang tersisa
+            if (mapLayer.getLayers().length > 0) {
+                map.fitBounds(L.featureGroup(mapLayer.getLayers()).getBounds(), { padding: [40, 40], maxZoom: 18 });
+            } else {
+                map.setView([-0.789, 113.921], 5); // Default view Indonesia jika kosong
+            }
         }
 
         function renderDistribution(aman, ringan, sedang, berat) {
@@ -1026,6 +1058,7 @@
         // VIEW 2: SARPRAS
         // ==========================================
         function renderSarprasTable() {
+            const filterProv = document.getElementById('filter-provinsi-sarpras').value;
             const filterText = document.getElementById('filter-text').value.toLowerCase();
             const filterNPSN = document.getElementById('filter-sekolah-sarpras').value;
             const filterKond = document.getElementById('filter-kondisi').value;
@@ -1039,6 +1072,7 @@
             let sumRusak = 0;
 
             const filteredData = flatObjects.filter(obj => {
+                if (filterProv !== 'ALL' && obj.provinsi !== filterProv) return false; // BARIS INI DITAMBAHKAN
                 if (filterText && !obj.namaObjek.toLowerCase().includes(filterText) && !obj.catatan.toLowerCase().includes(filterText)) return false;
                 if (filterNPSN !== 'ALL' && obj.npsn !== filterNPSN) return false;
                 if (filterAuditor !== 'ALL' && obj.inspektur !== filterAuditor) return false;
