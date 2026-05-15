@@ -53,10 +53,15 @@ Proyek ini terdiri dari dua file HTML mandiri:
 Tidak ada proses build. Cukup buka file HTML di browser.
 
 ```bash
-git clone https://github.com/USERNAME/sekolahaman.git
-cd sekolahaman
-# Buka sekolahaman.html di browser untuk mulai inspeksi
-# Buka dashboard.html untuk monitoring terpusat
+# Clone repository
+git clone https://github.com/AnggaConni/sekolahkita.git
+
+# Enter project directory
+cd sekolahkita
+
+# Run locally
+# Open sekolahaman.html for field interface
+# Open dashboard.html for centralized dashboard
 ```
 
 ### Alur Penggunaan Lengkap
