@@ -973,7 +973,16 @@
                         if (latest.kondisi === 'Rusak Berat') { totalKritis++; clr = 'red'; totalBerat++; stats.kritis++; stats.rusak++; }
                         else if (latest.kondisi === 'Rusak Sedang') { clr = 'amber'; totalSedang++; stats.rusak++; }
                         else if (latest.kondisi === 'Rusak Ringan') { clr = 'amber'; totalRingan++; stats.rusak++; }
-                        else { clr = 'emerald'; totalAman++; stats.aman++; }
+                        else { 
+                            // CEK LISTRIK DI SINI AGAR PIN PETA BERUBAH WARNA
+                            if (latest.listrik === 'Padam Total' || latest.listrik === 'Rawan/Sering Padam') {
+                                clr = 'amber'; // Pin peta jadi oranye/kuning
+                                stats.rusak++; // Anggap butuh perhatian
+                            } else {
+                                clr = 'emerald'; totalAman++; stats.aman++; // Benar-benar aman
+                            }
+                        }
+
                         tagStr = latest.listrik ? `${latest.kondisi} <br/> ⚡ Listrik: ${latest.listrik}` : latest.kondisi;
                     } else {
                         const rsk = parseInt(latest.qtyRusak) || 0;
