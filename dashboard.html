@@ -245,6 +245,7 @@
                         </div>
                         <h4 class="text-2xl font-black text-emerald-900 mt-1" id="mini-stat-aman">0</h4>
                     </div>
+
                     <div class="bg-gradient-to-br from-red-50 to-red-100/50 p-3 rounded-xl border border-red-100">
                         <div class="flex justify-between items-center">
                             <p class="text-xs font-semibold text-red-700">Perlu Perhatian</p>
@@ -252,6 +253,15 @@
                         </div>
                         <h4 class="text-2xl font-black text-red-900 mt-1" id="mini-stat-rusak">0</h4>
                     </div>
+
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100/50 p-3 rounded-xl border border-purple-100">
+                        <div class="flex justify-between items-center">
+                            <p class="text-xs font-semibold text-purple-700">Listrik Bermasalah</p>
+                            <i class="ph-fill ph-lightning-slash text-purple-500"></i>
+                        </div>
+                        <h4 class="text-2xl font-black text-purple-900 mt-1" id="mini-stat-listrik">0</h4>
+                    </div>
+
                 </div>
             </div>
 
@@ -825,7 +835,8 @@
                         qtyRusak: totalRusak,
                         catatan: latest.catatan,
                         inspektur: latest.inspektur,
-                        historyCount: groupedData[npsn].objek[objKey].history.length
+                        historyCount: groupedData[npsn].objek[objKey].history.length,
+                        listrik: latest.listrik
                     });
                 }
             }
@@ -924,7 +935,7 @@
             
             let totalSekolah = 0; 
             let totalObjek = 0; let totalKritis = 0; let totalLogs = 0;
-            let totalAman = 0; let totalRingan = 0; let totalSedang = 0; let totalBerat = 0;
+            let totalAman = 0; let totalRingan = 0; let totalSedang = 0; let totalBerat = 0; let totalListrikIsu = 0;
 
             mapLayer.clearLayers();
             
@@ -948,6 +959,10 @@
 
                     const latest = obj.history[obj.history.length - 1];
                     const isBg = obj.kategori === 'bangunan';
+                    if (latest.listrik === 'Padam Total' || latest.listrik === 'Rawan/Sering Padam') {
+                        totalListrikIsu++;
+                    }
+
                     let clr = 'blue'; let tagStr = ''; let statusKey = 'Aman';
                     
                     if (isBg) {
@@ -956,7 +971,7 @@
                         else if (latest.kondisi === 'Rusak Sedang') { clr = 'amber'; totalSedang++; stats.rusak++; }
                         else if (latest.kondisi === 'Rusak Ringan') { clr = 'amber'; totalRingan++; stats.rusak++; }
                         else { clr = 'emerald'; totalAman++; stats.aman++; }
-                        tagStr = latest.kondisi;
+                        tagStr = latest.listrik ? `${latest.kondisi} <br/> ⚡ Listrik: ${latest.listrik}` : latest.kondisi;
                     } else {
                         const rsk = parseInt(latest.qtyRusak) || 0;
                         const bk = parseInt(latest.qtyBaik) || 0;
@@ -997,6 +1012,7 @@
             document.getElementById('mini-stat-sekolah').innerText = totalSekolah; 
             document.getElementById('mini-stat-aman').innerText = totalAman;
             document.getElementById('mini-stat-rusak').innerText = totalRingan + totalSedang + totalBerat;
+            document.getElementById('mini-stat-listrik').innerText = totalListrikIsu;
 
             // Render ulang komponen lainnya
             renderDistribution(totalAman, totalRingan, totalSedang, totalBerat);
@@ -1084,7 +1100,7 @@
                     const isBg = r.kategori === 'bangunan';
                     let clr = 'blue', tagStr = '', icon = isBg ? 'ph-buildings' : 'ph-package';
                     if (isBg) {
-                        tagStr = r.kondisi;
+                        tagStr = r.listrik ? `${r.kondisi} · ⚡ ${r.listrik}` : r.kondisi;
                         clr = r.kondisi === 'Rusak Berat' ? 'red' : (r.kondisi === 'Aman' ? 'emerald' : 'amber');
                     } else {
                         const bk = parseInt(r.qtyBaik)||0; const rsk = parseInt(r.qtyRusak)||0;
@@ -1181,7 +1197,7 @@
                     if (obj.calcStatus === 'Rusak Berat') { clr = 'red'; statusIcon = 'ph-warning-octagon'; }
                     else if (obj.calcStatus === 'Aman') { clr = 'emerald'; statusIcon = 'ph-check-circle'; }
                     else { clr = 'amber'; statusIcon = 'ph-warning-circle'; }
-                    tagLabel = obj.calcStatus;
+                    tagLabel = obj.listrik ? `${obj.calcStatus} · ⚡ ${obj.listrik}` : obj.calcStatus;
                 } else {
                     if (obj.qtyRusak > 0) {
                         clr = obj.qtyRusak >= obj.qtyBaik ? 'red' : 'amber';
@@ -1296,7 +1312,8 @@ historyAsc.forEach((r, idx) => {
                 const isLatest = idx === 0;
                 let tagStr = ''; let clr = '';
                 if(isBg) {
-                    tagStr = r.kondisi; clr = r.kondisi === 'Rusak Berat' ? 'red' : (r.kondisi === 'Aman' ? 'emerald' : 'amber');
+                    tagStr = r.listrik ? `${r.kondisi} · ⚡ ${r.listrik}` : r.kondisi;
+                    clr = r.kondisi === 'Rusak Berat' ? 'red' : (r.kondisi === 'Aman' ? 'emerald' : 'amber');
                 } else {
                     const bk = parseInt(r.qtyBaik)||0; const rsk = parseInt(r.qtyRusak)||0;
                     tagStr = `${bk} Baik · ${rsk} Rusak`; clr = rsk > 0 ? (rsk >= bk ? 'red' : 'amber') : 'emerald';
