@@ -531,6 +531,11 @@
             applySchoolInfo();
         }
 
+        function closeSetup() {
+            document.getElementById('modal-setup').classList.add('hidden');
+            document.getElementById('modal-setup').classList.remove('flex');
+        }
+
         function applySchoolInfo() {
             document.getElementById('header-school-name').innerText = schoolInfo.nama;
             document.getElementById('dash-sekolah').innerText = schoolInfo.nama;
