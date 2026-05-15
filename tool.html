@@ -367,7 +367,12 @@
                             </div>
 
                             <!-- Foto (Dengan Dukungan URL Drive/Web) -->
-                            <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center relative bg-slate-50">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                                    Lampiran Foto 
+                                    <span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider">OPSIONAL</span>
+                                </label>
+                                <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center relative bg-slate-50 mt-2">
                                 <div id="photo-preview-container" class="hidden relative">
                                     <img id="photo-preview" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Preview" class="rounded-lg max-h-48 mx-auto object-contain shadow-sm" onerror="this.src='https://via.placeholder.com/400x300?text=Gambar+Tidak+Dapat+Dimuat'"/>
                                     <button type="button" onclick="removePhoto()" class="absolute top-2 right-2 bg-red-500 text-white h-7 w-7 rounded-full flex items-center justify-center font-bold shadow">X</button>
@@ -390,6 +395,7 @@
                                 </div>
                                 <input type="hidden" id="form-photo-base64">
                             </div>
+
 
                             <button type="submit" class="w-full bg-slate-800 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:bg-slate-900 transition-transform active:scale-95 flex justify-center items-center gap-2 mt-2">
                                 <i class="ph-bold ph-floppy-disk"></i> Post / Simpan Laporan
@@ -1050,10 +1056,11 @@
                 geojson: currentGeoJSON // Sekarang berlaku baik bangunan maupun aset
             };
 
+
             if(kat === 'bangunan') {
                 newData.kondisi = document.getElementById('form-kondisi').value;
                 newData.listrik = document.getElementById('form-listrik').value;
-                if(!newData.foto && !editingId) return alert("Wajib melampirkan/memberikan URL foto untuk inspeksi struktur bangunan!");
+                // Baris validasi wajib foto dihapus agar upload foto menjadi opsional
             } else {
                 newData.qtyBaik = document.getElementById('form-qty-baik').value;
                 newData.qtyRusak = document.getElementById('form-qty-rusak').value;
