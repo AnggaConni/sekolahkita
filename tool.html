@@ -309,11 +309,20 @@
                             <div id="container-kondisi-bangunan">
                                 <label class="text-xs font-bold text-slate-500 uppercase">Tingkat Kerusakan Saat Ini</label>
                                 <select id="form-kondisi" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
-                                    <option value="Aman">🟢 Aman (Tidak Ada Kerusakan)</option>
-                                    <option value="Rusak Ringan">🟡 Rusak Ringan (Retak Rambut, Cat Mengelupas)</option>
-                                    <option value="Rusak Sedang">🟠 Rusak Sedang (Atap Bocor, Plafon Berlubang)</option>
-                                    <option value="Rusak Berat">🔴 Rusak Berat (Struktur Miring, Kayu Lapuk, Rawan Rubuh)</option>
+                                    <option value="Aman">✅ Aman / Baik</option>
+                                    <option value="Rusak Ringan">⚠️ Rusak Ringan</option>
+                                    <option value="Rusak Sedang">🔶 Rusak Sedang</option>
+                                    <option value="Rusak Berat">🔴 Rusak Berat</option>
                                 </select>
+
+                                <div class="mt-4 border-t border-slate-200 pt-3">
+                                    <label class="text-xs font-bold text-slate-500 uppercase">Ketersediaan & Status Listrik</label>
+                                    <select id="form-listrik" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                                        <option value="Menyala Normal">⚡ Aman & Menyala Normal</option>
+                                        <option value="Rawan/Sering Padam">⚠️ Rawan (Korsleting / Sering Jeglek)</option>
+                                        <option value="Padam Total">❌ Padam Total / Tidak Ada Daya</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <!-- Kuantitas (Aset) -->
@@ -531,8 +540,10 @@
             applySchoolInfo();
         }
 
+        // Tambahkan fungsi ini agar tombol simpan tidak error
         function closeSetup() {
-            document.getElementById('modal-setup').classList.add('hidden');
+            // Sesuaikan ID ini dengan ID div modal profil Anda (misal: 'modal-setup' atau 'setup-modal')
+            document.getElementById('modal-setup').classList.add('hidden'); 
             document.getElementById('modal-setup').classList.remove('flex');
         }
 
@@ -1041,6 +1052,7 @@
 
             if(kat === 'bangunan') {
                 newData.kondisi = document.getElementById('form-kondisi').value;
+                newData.listrik = document.getElementById('form-listrik').value;
                 if(!newData.foto && !editingId) return alert("Wajib melampirkan/memberikan URL foto untuk inspeksi struktur bangunan!");
             } else {
                 newData.qtyBaik = document.getElementById('form-qty-baik').value;
@@ -1088,7 +1100,8 @@
                 const isBg = r.kategori === 'bangunan';
                 const icon = isBg ? 'ph-buildings' : 'ph-package';
                 const clr = isBg ? (r.kondisi==='Rusak Berat'?'red':(r.kondisi==='Aman'?'emerald':'amber')) : 'blue';
-                const tag = isBg ? r.kondisi : `${r.qtyBaik || 0} Baik | ${r.qtyRusak || 0} Rusak`;
+                // Ganti baris definisi tag pada kategori bangunan menjadi seperti ini:
+                const tag = isBg ? `${r.kondisi} | Listrik: ${r.listrik || 'N/A'}` : `${r.qtyBaik || 0} Baik | ${r.qtyRusak || 0} Rusak`;
 
                 return `
                 <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col gap-3">
@@ -1142,6 +1155,7 @@
 
             if(r.kategori === 'bangunan') {
                 document.getElementById('form-kondisi').value = r.kondisi;
+                document.getElementById('form-listrik').value = r.listrik || 'Menyala Normal';
             } else {
                 document.getElementById('form-qty-baik').value = r.qtyBaik;
                 document.getElementById('form-qty-rusak').value = r.qtyRusak;
