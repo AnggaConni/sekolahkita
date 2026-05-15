@@ -630,7 +630,7 @@
         const NAV_ACTIVE = "nav-btn w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all gradient-blue text-white shadow-lg shadow-blue-500/30";
         const NAV_INACTIVE = "nav-btn w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all text-slate-600 hover:bg-blue-50 hover:text-blue-600";
 
-        // Fungsi untuk mengubah link GDrive Viewer menjadi GDrive Direct Image
+        // Fungsi untuk mengubah link GDrive agar bisa tampil di tag <img>
         function getDirectImageUrl(url) {
             if (!url) return "";
             
@@ -638,13 +638,16 @@
             const driveFileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
             const driveQueryIdMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
 
-            if (driveFileIdMatch && driveFileIdMatch[1]) {
-                return `https://drive.google.com/uc?export=view&id=${driveFileIdMatch[1]}`;
-            } else if (driveQueryIdMatch && driveQueryIdMatch[1]) {
-                return `https://drive.google.com/uc?export=view&id=${driveQueryIdMatch[1]}`;
+            let fileId = null;
+            if (driveFileIdMatch && driveFileIdMatch[1]) fileId = driveFileIdMatch[1];
+            else if (driveQueryIdMatch && driveQueryIdMatch[1]) fileId = driveQueryIdMatch[1];
+            
+            if (fileId) {
+                // Trik Bypass 2024: Gunakan API thumbnail agar gambar bisa dirender oleh browser
+                return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
             }
             
-            // Jika link biasa (Wikimedia, Direct Link, dll), kembalikan apa adanya
+            // Jika link biasa, kembalikan apa adanya
             return url;
         }
 
@@ -1193,12 +1196,20 @@
                 const icon = isBg ? 'ph-buildings' : 'ph-package';
                 
                 let clr = 'blue'; let tagLabel = ''; let statusIcon = 'ph-check-circle';
-                if(isBg) {
-                    if (obj.calcStatus === 'Rusak Berat') { clr = 'red'; statusIcon = 'ph-warning-octagon'; }
-                    else if (obj.calcStatus === 'Aman') { clr = 'emerald'; statusIcon = 'ph-check-circle'; }
-                    else { clr = 'amber'; statusIcon = 'ph-warning-circle'; }
-                    tagLabel = obj.listrik ? `${obj.calcStatus} · ⚡ ${obj.listrik}` : obj.calcStatus;
-                } else {
+                    if(isBg) {
+                        // Cek apakah listrik sedang bermasalah
+                        let isListrikRusak = obj.listrik === 'Padam Total' || obj.listrik === 'Rawan/Sering Padam';
+                        
+                        if (obj.calcStatus === 'Rusak Berat') { clr = 'red'; statusIcon = 'ph-warning-octagon'; }
+                        // Ubah logika di baris ini: Gedung hijau HANYA JIKA fisik aman DAN listrik aman
+                        else if (obj.calcStatus === 'Aman' && !isListrikRusak) { clr = 'emerald'; statusIcon = 'ph-check-circle'; }
+                        // Jika fisik aman tapi listrik mati, jadikan warna kuning (amber)
+                        else { clr = 'amber'; statusIcon = 'ph-warning-circle'; }
+                        
+                        tagLabel = obj.listrik ? `${obj.calcStatus} · ⚡ ${obj.listrik}` : obj.calcStatus;
+                }
+                
+                else {
                     if (obj.qtyRusak > 0) {
                         clr = obj.qtyRusak >= obj.qtyBaik ? 'red' : 'amber';
                         statusIcon = 'ph-warning-circle';
@@ -1285,12 +1296,32 @@
             } else {
                 const prev = historyDesc[historyDesc.length - 2];
                 let statusMsg = ""; let statusIcon = ""; let statusColor = "";
+
                 if (isBg) {
                     let diff = bobotKondisi[latest.kondisi] - bobotKondisi[prev.kondisi];
-                    if (diff < 0) { statusMsg = diff <= -2 ? "Perbaikan Signifikan" : "Terjadi Perbaikan"; statusIcon = "ph-trend-up"; statusColor = "emerald"; }
-                    else if (diff > 0) { statusMsg = diff >= 2 ? "Kerusakan Mendadak" : "Kondisi Menurun"; statusIcon = "ph-trend-down"; statusColor = "red"; }
-                    else { statusMsg = latest.kondisi === 'Aman' ? "Stagnan (Aman)" : "Stagnan (Belum Diperbaiki)"; statusIcon = "ph-minus"; statusColor = latest.kondisi === 'Aman' ? "slate" : "amber"; }
-                } else {
+                    
+                    // Tambahan deteksi perubahan listrik
+                    let isListrikTurun = (latest.listrik === 'Padam Total' || latest.listrik === 'Rawan/Sering Padam') && (prev.listrik === 'Menyala Normal' || !prev.listrik);
+                    let isListrikNaik = (latest.listrik === 'Menyala Normal') && (prev.listrik === 'Padam Total' || prev.listrik === 'Rawan/Sering Padam');
+
+                    if (diff < 0 || isListrikNaik) { 
+                        statusMsg = diff <= -2 ? "Perbaikan Signifikan" : "Terjadi Perbaikan"; 
+                        statusIcon = "ph-trend-up"; statusColor = "emerald"; 
+                    }
+                    else if (diff > 0 || isListrikTurun) { 
+                        statusMsg = diff >= 2 ? "Kerusakan Mendadak" : "Kondisi Menurun (Isu Listrik)"; 
+                        statusIcon = "ph-trend-down"; statusColor = "red"; 
+                    }
+                    else { 
+                        // Jika tidak ada perubahan
+                        let isCurrentRusak = latest.kondisi !== 'Aman' || latest.listrik === 'Padam Total' || latest.listrik === 'Rawan/Sering Padam';
+                        statusMsg = isCurrentRusak ? "Stagnan (Masih Bermasalah)" : "Stagnan (Aman)"; 
+                        statusIcon = "ph-minus"; 
+                        statusColor = isCurrentRusak ? "amber" : "slate"; 
+                    }
+                }
+                
+                else {
                     let prevRsk = parseInt(prev.qtyRusak) || 0; let rsk = parseInt(latest.qtyRusak) || 0;
                     if (rsk < prevRsk) { statusMsg = "Aset Diperbaiki / Diganti"; statusIcon = "ph-trend-up"; statusColor = "emerald"; }
                     else if (rsk > prevRsk) { statusMsg = "Kerusakan Bertambah"; statusIcon = "ph-trend-down"; statusColor = "red"; }
